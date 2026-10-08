@@ -108,9 +108,36 @@ class SettingsStore(context: Context) {
     var excludedApps: Set<String>
         get() = prefs.getStringSet(KEY_EXCLUDED_APPS, emptySet())?.toSet() ?: emptySet()
         set(value) {
-
             prefs.edit().putStringSet(KEY_EXCLUDED_APPS, HashSet(value)).apply()
         }
+
+    var gamingModeEnabled: Boolean
+        get() = prefs.getBoolean(KEY_GAMING_MODE, false)
+        set(value) { prefs.edit().putBoolean(KEY_GAMING_MODE, value).apply() }
+
+    var gamingMtu: Int
+        get() = prefs.getInt(KEY_GAMING_MTU, 1420)
+        set(value) { prefs.edit().putInt(KEY_GAMING_MTU, value.coerceIn(1280, 8500)).apply() }
+
+    var gamingDnsPreset: String
+        get() = prefs.getString(KEY_GAMING_DNS_PRESET, "CLOUDFLARE_GAMING") ?: "CLOUDFLARE_GAMING"
+        set(value) { prefs.edit().putString(KEY_GAMING_DNS_PRESET, value).apply() }
+
+    var tcpNoDelayEnabled: Boolean
+        get() = prefs.getBoolean(KEY_TCP_NODELAY, true)
+        set(value) { prefs.edit().putBoolean(KEY_TCP_NODELAY, value).apply() }
+
+    var dynamicIslandEnabled: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND, true)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND, value).apply() }
+
+    var killSwitchEnabled: Boolean
+        get() = prefs.getBoolean(KEY_KILL_SWITCH, false)
+        set(value) { prefs.edit().putBoolean(KEY_KILL_SWITCH, value).apply() }
+
+    var bypassLanTraffic: Boolean
+        get() = prefs.getBoolean(KEY_BYPASS_LAN, true)
+        set(value) { prefs.edit().putBoolean(KEY_BYPASS_LAN, value).apply() }
 
     enum class UpstreamProxyType { SOCKS5, HTTP }
 
@@ -149,6 +176,13 @@ class SettingsStore(context: Context) {
         private const val KEY_UPSTREAM_PROXY_USERNAME = "upstream_proxy_username"
         private const val KEY_UPSTREAM_PROXY_PASSWORD = "upstream_proxy_password"
         private const val KEY_EXCLUDED_APPS = "excluded_apps"
+        private const val KEY_GAMING_MODE = "gaming_mode_enabled"
+        private const val KEY_GAMING_MTU = "gaming_mtu"
+        private const val KEY_GAMING_DNS_PRESET = "gaming_dns_preset"
+        private const val KEY_TCP_NODELAY = "tcp_nodelay_enabled"
+        private const val KEY_DYNAMIC_ISLAND = "dynamic_island_enabled"
+        private const val KEY_KILL_SWITCH = "kill_switch_enabled"
+        private const val KEY_BYPASS_LAN = "bypass_lan_traffic"
         const val DEFAULT_SOCKS_BIND_ADDRESS = "127.0.0.1"
         const val DEFAULT_SOCKS_PORT = 1080
         const val DEFAULT_UPSTREAM_PROXY_PORT = 1080

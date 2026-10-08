@@ -2,6 +2,17 @@ package com.vauth.foxyvpn.data.model
 
 enum class ConnectionState { DISCONNECTED, CONNECTING, CONNECTED }
 
+data class VpnLiveMetrics(
+    val uploadBytesPerSec: Long = 0L,
+    val downloadBytesPerSec: Long = 0L,
+    val pingMs: Long = 0L,
+    val connectedDurationSeconds: Long = 0L,
+    val clientIp: String? = null,
+    val serverCountry: String? = null,
+    val serverCity: String? = null,
+    val gamingModeActive: Boolean = false,
+)
+
 enum class LoginStepState { CREDENTIALS, TWO_FACTOR }
 
 data class VpnProtocol(
