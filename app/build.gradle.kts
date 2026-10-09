@@ -19,7 +19,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.aistudio.foxyvpn.yhkpmz"
+        applicationId = "com.vauth.foxyvpn"
         minSdk = 26
         targetSdk = 35
         versionCode = 41
@@ -27,11 +27,14 @@ android {
     }
 
     signingConfigs {
-        create("debugConfig") {
-            storeFile = file("${rootDir}/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+        val rootDebugKeystore = file("${rootDir}/debug.keystore")
+        if (rootDebugKeystore.exists()) {
+            create("debugConfig") {
+                storeFile = rootDebugKeystore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
         }
         if (hasReleaseSigning) {
             create("release") {
@@ -45,7 +48,9 @@ android {
 
     buildTypes {
         debug {
-            signingConfig = signingConfigs.getByName("debugConfig")
+            signingConfigs.findByName("debugConfig")?.let {
+                signingConfig = it
+            }
         }
         release {
             isMinifyEnabled = true

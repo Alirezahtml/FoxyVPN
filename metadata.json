@@ -1,6 +1,6 @@
 {
   "name": "FoxyVPN",
-  "description": "FoxyVPN Android client",
+  "description": "Fast and secure VPN client for Android",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

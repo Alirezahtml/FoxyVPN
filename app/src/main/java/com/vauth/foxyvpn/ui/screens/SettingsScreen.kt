@@ -4,26 +4,19 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -87,15 +80,6 @@ fun SettingsScreen(
     var upstreamProxyUsername by remember { mutableStateOf(settingsStore.upstreamProxyUsername) }
     var upstreamProxyPassword by remember { mutableStateOf(settingsStore.upstreamProxyPassword) }
     var excludedApps by remember { mutableStateOf(settingsStore.excludedApps) }
-    var gamingModeEnabled by remember { mutableStateOf(settingsStore.gamingModeEnabled) }
-    var gamingMtu by remember { mutableStateOf(settingsStore.gamingMtu) }
-    var gamingDnsPreset by remember { mutableStateOf(settingsStore.gamingDnsPreset) }
-    var tcpNoDelayEnabled by remember { mutableStateOf(settingsStore.tcpNoDelayEnabled) }
-    var dynamicIslandEnabled by remember { mutableStateOf(settingsStore.dynamicIslandEnabled) }
-    var killSwitchEnabled by remember { mutableStateOf(settingsStore.killSwitchEnabled) }
-    var bypassLanTraffic by remember { mutableStateOf(settingsStore.bypassLanTraffic) }
-    var showGamingMtuDialog by remember { mutableStateOf(false) }
-    var showGamingDnsDialog by remember { mutableStateOf(false) }
     var showDohProviderDialog by remember { mutableStateOf(false) }
     var showCustomDnsDialog by remember { mutableStateOf(false) }
     var showSocksBindDialog by remember { mutableStateOf(false) }
@@ -211,51 +195,17 @@ fun SettingsScreen(
             },
         )
     }
-    if (showGamingMtuDialog) {
-        GamingMtuPickerDialog(
-            current = gamingMtu,
-            onDismiss = { showGamingMtuDialog = false },
-            onConfirm = {
-                gamingMtu = it
-                settingsStore.gamingMtu = it
-                showGamingMtuDialog = false
-            },
-        )
-    }
-    if (showGamingDnsDialog) {
-        GamingDnsPickerDialog(
-            current = gamingDnsPreset,
-            onDismiss = { showGamingDnsDialog = false },
-            onConfirm = {
-                gamingDnsPreset = it
-                settingsStore.gamingDnsPreset = it
-                showGamingDnsDialog = false
-            },
-        )
-    }
 
     Scaffold(
         topBar = {
-            Column(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Spacer(Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .width(36.dp)
-                        .height(4.dp)
-                        .background(Color(0xFF6B6B7F), CircleShape),
-                )
-                TopAppBar(
-                    title = { Text("Settings") },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                )
-            }
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
         },
     ) { padding ->
         Column(
@@ -264,102 +214,10 @@ fun SettingsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
-            SectionLabel("Gaming & Low Latency (حالت گیمینگ)")
-            ListItem(
-                headlineContent = { Text("Gaming Turbo Mode") },
-                supportingContent = { Text("Activates low latency packet prioritization, MTU tuning, and anti-jitter") },
-                trailingContent = {
-                    Switch(
-                        checked = gamingModeEnabled,
-                        onCheckedChange = {
-                            gamingModeEnabled = it
-                            settingsStore.gamingModeEnabled = it
-                        },
-                    )
-                },
-            )
-            ListItem(
-                headlineContent = { Text("Gaming MTU Optimization") },
-                supportingContent = { Text("$gamingMtu bytes (Prevents packet fragmentation for online games)") },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showGamingMtuDialog = true },
-            )
-            ListItem(
-                headlineContent = { Text("TCP_NODELAY Fast Socket") },
-                supportingContent = { Text("Bypasses Nagle buffering for real-time multiplayer responses") },
-                trailingContent = {
-                    Switch(
-                        checked = tcpNoDelayEnabled,
-                        onCheckedChange = {
-                            tcpNoDelayEnabled = it
-                            settingsStore.tcpNoDelayEnabled = it
-                        },
-                    )
-                },
-            )
-            ListItem(
-                headlineContent = { Text("Fast Gaming DNS Engine") },
-                supportingContent = {
-                    val label = when (gamingDnsPreset) {
-                        "CLOUDFLARE_GAMING" -> "Cloudflare 1.1.1.1 (Gaming & Anti-Lag)"
-                        "GOOGLE" -> "Google 8.8.8.8 (Ultra-Low RTT)"
-                        "QUAD9" -> "Quad9 9.9.9.9 (Malware Shield & Fast Edge)"
-                        "ADGUARD" -> "AdGuard (Anti-Tracker & Ad-Shield)"
-                        else -> "Cloudflare 1.1.1.1 (Gaming & Anti-Lag)"
-                    }
-                    Text(label)
-                },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showGamingDnsDialog = true },
-            )
-
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            SectionLabel("Dynamic Island Capsule (داینامیک آیلند)")
-            ListItem(
-                headlineContent = { Text("Dynamic Island Capsule HUD") },
-                supportingContent = { Text("Floating status bar capsule with live speeds, exit IP, flag & ping") },
-                trailingContent = {
-                    Switch(
-                        checked = dynamicIslandEnabled,
-                        onCheckedChange = {
-                            dynamicIslandEnabled = it
-                            settingsStore.dynamicIslandEnabled = it
-                        },
-                    )
-                },
-            )
-
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            SectionLabel("Security & Reliability")
-            ListItem(
-                headlineContent = { Text("VPN Kill Switch") },
-                supportingContent = { Text("Block unencrypted traffic if VPN connection drops unexpectedly") },
-                trailingContent = {
-                    Switch(
-                        checked = killSwitchEnabled,
-                        onCheckedChange = {
-                            killSwitchEnabled = it
-                            settingsStore.killSwitchEnabled = it
-                        },
-                    )
-                },
-            )
-            ListItem(
-                headlineContent = { Text("Bypass Local LAN") },
-                supportingContent = { Text("Allow access to local printers and IoT devices on home Wi-Fi") },
-                trailingContent = {
-                    Switch(
-                        checked = bypassLanTraffic,
-                        onCheckedChange = {
-                            bypassLanTraffic = it
-                            settingsStore.bypassLanTraffic = it
-                        },
-                    )
-                },
-            )
+            SectionLabel("Connection")
             ListItem(
                 headlineContent = { Text("Verify exit location") },
-                supportingContent = { Text("Check that the tunnel exits in the selected country via Cloudflare Trace") },
+                supportingContent = { Text("Check that the tunnel exits in the selected country") },
                 trailingContent = {
                     Switch(
                         checked = exitCheckEnabled,
@@ -979,89 +837,5 @@ private fun SectionLabel(text: String) {
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
-}
-
-@Composable
-private fun GamingMtuPickerDialog(
-    current: Int,
-    onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit,
-) {
-    val presets = listOf(
-        1420 to "1420 bytes \u2014 Gaming Optimized (Recommended for PUBG, CoD Mobile)",
-        1380 to "1380 bytes \u2014 Cellular 4G/5G Anti-Jitter",
-        1500 to "1500 bytes \u2014 Standard Ethernet / Broadband",
-        8500 to "8500 bytes \u2014 Jumbo Max Throughput",
-    )
-    var selected by remember { mutableStateOf(current) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Gaming MTU Optimization") },
-        text = {
-            Column {
-                presets.forEach { (mtu, label) ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(selected = selected == mtu, onClick = { selected = mtu })
-                            .padding(vertical = 6.dp),
-                    ) {
-                        RadioButton(selected = selected == mtu, onClick = { selected = mtu })
-                        Text(label, modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
-@Composable
-private fun GamingDnsPickerDialog(
-    current: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-) {
-    val presets = listOf(
-        "CLOUDFLARE_GAMING" to "Cloudflare 1.1.1.1 \u2014 Gaming & Anti-Lag",
-        "GOOGLE" to "Google 8.8.8.8 \u2014 Global Ultra-Low RTT",
-        "QUAD9" to "Quad9 9.9.9.9 \u2014 Malware Shield & Edge Anycast",
-        "ADGUARD" to "AdGuard \u2014 Ad-Shield & Anti-Tracker",
-    )
-    var selected by remember { mutableStateOf(current) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Gaming DNS Engine") },
-        text = {
-            Column {
-                presets.forEach { (preset, label) ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(selected = selected == preset, onClick = { selected = preset })
-                            .padding(vertical = 6.dp),
-                    ) {
-                        RadioButton(selected = selected == preset, onClick = { selected = preset })
-                        Text(label, modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
     )
 }

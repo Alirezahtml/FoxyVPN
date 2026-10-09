@@ -97,7 +97,7 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun FoxyVpnTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
-    dynamicColor: Boolean = false,
+    dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val systemInDarkTheme = isSystemInDarkTheme()
