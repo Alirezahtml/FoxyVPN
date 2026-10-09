@@ -25,6 +25,15 @@ jobs:
         with:
           packages: "platform-tools"
 
+      - name: Install NDK
+        run: sdkmanager --install "ndk;26.1.10909125"
+
+      - name: Fetch hev-socks5-tunnel native sources
+        run: |
+          if [ ! -f "app/src/main/jni/Android.mk" ]; then
+            git clone --branch 2.17.1 --depth 1 --recursive --shallow-submodules https://github.com/heiher/hev-socks5-tunnel.git app/src/main/jni
+          fi
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -32,7 +41,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Assemble debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug -PenableNativeBuild=true --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -60,6 +69,15 @@ jobs:
         with:
           packages: "platform-tools"
 
+      - name: Install NDK
+        run: sdkmanager --install "ndk;26.1.10909125"
+
+      - name: Fetch hev-socks5-tunnel native sources
+        run: |
+          if [ ! -f "app/src/main/jni/Android.mk" ]; then
+            git clone --branch 2.17.1 --depth 1 --recursive --shallow-submodules https://github.com/heiher/hev-socks5-tunnel.git app/src/main/jni
+          fi
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -85,7 +103,7 @@ jobs:
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease -PenableNativeBuild=true --no-daemon
 
       - name: Remove the decoded keystore
         if: always()

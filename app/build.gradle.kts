@@ -5,6 +5,34 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+val hevSocks5TunnelVersion = "2.17.1"
+val hevSocks5TunnelDir = file("src/main/jni")
+
+val enableNativeBuild = (project.findProperty("enableNativeBuild")?.toString()?.toBoolean() ?: false) ||
+    (System.getenv("ENABLE_NATIVE_BUILD") == "true")
+
+if (enableNativeBuild) {
+    val fetchHevSocks5Tunnel = tasks.register<Exec>("fetchHevSocks5Tunnel") {
+        val marker = File(hevSocks5TunnelDir, "Android.mk")
+        outputs.file(marker)
+        onlyIf { !marker.exists() }
+        doFirst { hevSocks5TunnelDir.mkdirs() }
+        commandLine(
+            "git", "clone",
+            "--branch", hevSocks5TunnelVersion,
+            "--depth", "1",
+            "--recursive",
+            "--shallow-submodules",
+            "https://github.com/heiher/hev-socks5-tunnel.git",
+            hevSocks5TunnelDir.absolutePath,
+        )
+    }
+
+    tasks.matching { it.name.startsWith("externalNativeBuild") || it.name.contains("NdkBuild") }
+        .configureEach { dependsOn(fetchHevSocks5Tunnel) }
+    tasks.named("preBuild").configure { dependsOn(fetchHevSocks5Tunnel) }
+}
+
 val releaseKeystoreFile = rootProject.file("release-keystore.jks")
 val releaseKeyAlias: String? = System.getenv("SIGNING_KEY_ALIAS")
 val releaseKeyPassword: String? = System.getenv("SIGNING_KEY_PASSWORD")
@@ -17,6 +45,28 @@ val hasReleaseSigning = releaseKeystoreFile.exists() &&
 android {
     namespace = "com.vauth.foxyvpn"
     compileSdk = 35
+
+    if (enableNativeBuild) {
+        ndkVersion = "26.1.10909125"
+
+        defaultConfig {
+            externalNativeBuild {
+                ndkBuild {
+                    abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
+                    arguments += listOf(
+                        "APP_PLATFORM=android-26",
+                        "APP_CFLAGS=-DPKGNAME=com/vauth/foxyvpn/vpn/tun -DCLSNAME=HevSocks5Tunnel",
+                    )
+                }
+            }
+        }
+
+        externalNativeBuild {
+            ndkBuild {
+                path = file("src/main/jni/Android.mk")
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.vauth.foxyvpn"

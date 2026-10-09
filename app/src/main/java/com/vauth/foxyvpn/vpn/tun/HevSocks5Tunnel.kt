@@ -25,8 +25,12 @@ object HevSocks5Tunnel {
 
     fun start(configPath: String, tunFd: Int): Boolean {
         if (!nativeLoaded) {
-            simulatedRunning.set(true)
-            return true
+            AppLogger.e(
+                TAG,
+                "Cannot start VPN tunnel: native library (libhev-socks5-tunnel.so) is missing from this APK. " +
+                    "To enable real VPN tunneling, compile via GitHub Actions or with NDK enabled.",
+            )
+            return false
         }
         return runCatching { TProxyStartService(configPath, tunFd) }
             .onFailure { AppLogger.e(TAG, "failed to start hev-socks5-tunnel", it) }
