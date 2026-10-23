@@ -281,6 +281,24 @@ class SettingsStore(context: Context) {
             _islandConfigRevision.value++
         }
 
+    var keepAliveEnabled: Boolean
+        get() = prefs.getBoolean(KEY_KEEP_ALIVE_ENABLED, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_KEEP_ALIVE_ENABLED, value).apply()
+        }
+
+    var keepAliveIntervalSec: Int
+        get() = prefs.getInt(KEY_KEEP_ALIVE_INTERVAL_SEC, 20).coerceIn(10, 120)
+        set(value) {
+            prefs.edit().putInt(KEY_KEEP_ALIVE_INTERVAL_SEC, value.coerceIn(10, 120)).apply()
+        }
+
+    var autoReconnectEnabled: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_RECONNECT_ENABLED, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_AUTO_RECONNECT_ENABLED, value).apply()
+        }
+
     enum class DynamicIslandSize(
         val label: String,
         val heightDp: Int,
@@ -434,6 +452,9 @@ class SettingsStore(context: Context) {
         private const val KEY_DYNAMIC_ISLAND_SHOW_FLAG = "dynamic_island_show_flag"
         private const val KEY_DYNAMIC_ISLAND_SHOW_TIMER = "dynamic_island_show_timer"
         private const val KEY_DYNAMIC_ISLAND_ANIMATION = "dynamic_island_animation"
+        private const val KEY_KEEP_ALIVE_ENABLED = "keep_alive_enabled"
+        private const val KEY_KEEP_ALIVE_INTERVAL_SEC = "keep_alive_interval_sec"
+        private const val KEY_AUTO_RECONNECT_ENABLED = "auto_reconnect_enabled"
         const val DEFAULT_SOCKS_BIND_ADDRESS = "127.0.0.1"
         const val DEFAULT_SOCKS_PORT = 1080
         const val DEFAULT_HTTP_PROXY_PORT = 8080

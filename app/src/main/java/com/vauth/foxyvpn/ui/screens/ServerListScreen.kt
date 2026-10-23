@@ -63,6 +63,8 @@ import com.vauth.foxyvpn.ui.theme.NeumorphicCard
 import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicSunken
+import com.vauth.foxyvpn.ui.theme.neumorphicTouchBounce
+import com.vauth.foxyvpn.ui.theme.staggeredEntrance
 import com.vauth.foxyvpn.vpn.PingUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -387,7 +389,9 @@ fun ServerListScreen(
                                     NeumorphicCard(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(start = 12.dp),
+                                            .padding(start = 12.dp)
+                                            .staggeredEntrance(row.cityIndex % 8, delayPerItemMs = 35)
+                                            .neumorphicTouchBounce(),
                                         cornerRadius = 14.dp,
                                         onClick = {
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)

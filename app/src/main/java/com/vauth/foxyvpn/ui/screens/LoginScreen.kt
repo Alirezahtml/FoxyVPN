@@ -56,6 +56,9 @@ import com.vauth.foxyvpn.ui.theme.NeumorphicButton
 import com.vauth.foxyvpn.ui.theme.NeumorphicCard
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicSunken
+import com.vauth.foxyvpn.ui.theme.shakeOnTrigger
+import com.vauth.foxyvpn.ui.theme.staggeredEntrance
+import com.vauth.foxyvpn.ui.theme.subtleFloatAnimation
 import kotlinx.coroutines.launch
 
 @Composable
@@ -131,6 +134,8 @@ fun LoginScreen(
             Box(
                 modifier = Modifier
                     .size(80.dp)
+                    .subtleFloatAnimation()
+                    .staggeredEntrance(0)
                     .clip(CircleShape)
                     .background(neu.surfaceElevated),
                 contentAlignment = Alignment.Center,
@@ -162,7 +167,10 @@ fun LoginScreen(
             Spacer(Modifier.height(28.dp))
 
             NeumorphicCard(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .staggeredEntrance(1)
+                    .shakeOnTrigger(errorMessage),
                 cornerRadius = 24.dp,
             ) {
                 Column(

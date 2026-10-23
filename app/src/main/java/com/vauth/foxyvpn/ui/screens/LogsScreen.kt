@@ -62,6 +62,7 @@ import com.vauth.foxyvpn.ui.theme.NeumorphicCard
 import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicSunken
+import com.vauth.foxyvpn.ui.theme.neumorphicTouchBounce
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -205,6 +206,7 @@ fun LogsScreen(onBack: () -> Unit) {
 
                     Box(
                         modifier = Modifier
+                            .neumorphicTouchBounce()
                             .clip(pillShape)
                             .background(if (isSelected) neu.accent else neu.surfaceElevated)
                             .clickable { filter = option }

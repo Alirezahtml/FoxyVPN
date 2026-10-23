@@ -843,6 +843,7 @@ class FoxyVpnService : VpnService() {
             watchdogJob = scope.launch {
                 var consecutiveFailures = 0
                 var waitingForNetwork = false
+                var lastKeepAliveProbeMs = System.currentTimeMillis()
 
                 suspend fun stopWithFatalError(message: String) {
                     AppLogger.e(TAG, "unrecoverable upstream failure; disconnecting: $message")
@@ -869,7 +870,29 @@ class FoxyVpnService : VpnService() {
                         }
                         consecutiveFailures = 0
                         waitingForNetwork = false
+
+                        if (settingsStore.keepAliveEnabled) {
+                            val now = System.currentTimeMillis()
+                            val intervalMs = settingsStore.keepAliveIntervalSec * 1_000L
+                            if (now - lastKeepAliveProbeMs >= intervalMs) {
+                                lastKeepAliveProbeMs = now
+                                val endpoint = _connectedEndpoint.value
+                                if (endpoint != null) {
+                                    val probeLatency = PingUtil.measureTcpLatencyMs(endpoint.first, endpoint.second)
+                                    if (probeLatency != null && myGeneration == connectionGeneration) {
+                                        _pingLatencyMs.value = probeLatency
+                                        _keepAlivePulseCount.value += 1
+                                        _lastKeepAliveAtMs.value = System.currentTimeMillis()
+                                    }
+                                }
+                            }
+                        }
                         continue
+                    }
+
+                    if (!settingsStore.autoReconnectEnabled) {
+                        stopWithFatalError("Connection dropped (Auto-Reconnect Watchdog is disabled).")
+                        return@launch
                     }
 
                     if (!hasUsableNetwork()) {
@@ -1277,11 +1300,21 @@ class FoxyVpnService : VpnService() {
         private val _connectedEndpoint = MutableStateFlow<Pair<String, Int>?>(null)
         val connectedEndpoint: StateFlow<Pair<String, Int>?> = _connectedEndpoint
 
+        private val _keepAlivePulseCount = MutableStateFlow(0)
+        val keepAlivePulseCount: StateFlow<Int> = _keepAlivePulseCount
+
+        private val _lastKeepAliveAtMs = MutableStateFlow<Long?>(null)
+        val lastKeepAliveAtMs: StateFlow<Long?> = _lastKeepAliveAtMs
+
         suspend fun pingNow(): Int? {
             val endpoint = _connectedEndpoint.value ?: return null
             val latency = PingUtil.measureTcpLatencyMs(endpoint.first, endpoint.second)
             if (_state.value == ConnectionState.CONNECTED) {
                 _pingLatencyMs.value = latency
+                if (latency != null) {
+                    _keepAlivePulseCount.value += 1
+                    _lastKeepAliveAtMs.value = System.currentTimeMillis()
+                }
             }
             return latency
         }

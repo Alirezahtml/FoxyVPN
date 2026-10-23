@@ -3,8 +3,10 @@ package com.vauth.foxyvpn.ui.components
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -168,6 +170,12 @@ fun DynamicIsland(
             modifier = Modifier
                 .widthIn(min = sizeConfig.widthDp.dp, max = if (isExpanded) 420.dp else (sizeConfig.widthDp + 64).dp)
                 .heightIn(min = if (isExpanded) 130.dp else sizeConfig.heightDp.dp)
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioLowBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                )
                 .neumorphicRaised(
                     shape = shape,
                     cornerRadius = pillCornerRadius,
@@ -205,15 +213,10 @@ fun DynamicIsland(
                     // Status dot / Icon
                     when (state) {
                         ConnectionState.CONNECTED -> {
-                            Box(
-                                modifier = Modifier
-                                    .size(9.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        statusColors.connected.copy(
-                                            alpha = if (settingsStore.dynamicIslandAnimation) glowAlpha else 1f
-                                        )
-                                    ),
+                            com.vauth.foxyvpn.ui.theme.AnimatedTrafficEqualizer(
+                                active = settingsStore.dynamicIslandAnimation,
+                                color = statusColors.connected,
+                                barCount = 3,
                             )
                         }
                         ConnectionState.CONNECTING -> {

@@ -33,8 +33,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vauth.foxyvpn.data.FxaAuthRepository
 import com.vauth.foxyvpn.data.SessionStatus
+import com.vauth.foxyvpn.ui.theme.NeumorphicRadarPulse
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicRaised
+import com.vauth.foxyvpn.ui.theme.staggeredEntrance
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -79,29 +81,36 @@ fun SplashScreen(
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size((90 * pulseScale).dp)
-                    .neumorphicRaised(
-                        shape = CircleShape,
-                        cornerRadius = 45.dp,
-                        elevation = 8.dp,
-                        lightShadowColor = neu.shadowLight.copy(alpha = if (neu.isDark) 0.3f else 0.85f),
-                        darkShadowColor = neu.shadowDark.copy(alpha = if (neu.isDark) 0.7f else 0.45f),
-                    )
-                    .clip(CircleShape)
-                    .background(neu.surface),
-                contentAlignment = Alignment.Center,
+            NeumorphicRadarPulse(
+                color = neu.accent,
+                isActive = true,
+                isConnecting = true,
+                size = 156.dp,
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Shield,
-                    contentDescription = null,
-                    modifier = Modifier.size(46.dp),
-                    tint = neu.accent,
-                )
+                Box(
+                    modifier = Modifier
+                        .size((90 * pulseScale).dp)
+                        .neumorphicRaised(
+                            shape = CircleShape,
+                            cornerRadius = 45.dp,
+                            elevation = 8.dp,
+                            lightShadowColor = neu.shadowLight.copy(alpha = if (neu.isDark) 0.3f else 0.85f),
+                            darkShadowColor = neu.shadowDark.copy(alpha = if (neu.isDark) 0.7f else 0.45f),
+                        )
+                        .clip(CircleShape)
+                        .background(neu.surface),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Shield,
+                        contentDescription = null,
+                        modifier = Modifier.size(46.dp),
+                        tint = neu.accent,
+                    )
+                }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(18.dp))
 
             Text(
                 "FoxyVPN",
@@ -109,11 +118,12 @@ fun SplashScreen(
                 fontWeight = FontWeight.ExtraBold,
                 color = neu.textPrimary,
                 letterSpacing = 0.8.sp,
+                modifier = Modifier.staggeredEntrance(1),
             )
 
             CircularProgressIndicator(
                 modifier = Modifier
-                    .padding(top = 28.dp)
+                    .padding(top = 24.dp)
                     .size(24.dp),
                 strokeWidth = 2.5.dp,
                 color = neu.accent,

@@ -1,13 +1,22 @@
 package com.vauth.foxyvpn.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,16 +38,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,6 +62,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -57,6 +71,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -69,17 +84,25 @@ import com.vauth.foxyvpn.data.GUARDIAN_ENDPOINT_DEFAULT
 import com.vauth.foxyvpn.data.RECOMMENDED_COUNTRY_CODE
 import com.vauth.foxyvpn.data.ServerListClient
 import com.vauth.foxyvpn.data.formatBytes
+import com.vauth.foxyvpn.data.formatBytesPerSecond
 import com.vauth.foxyvpn.data.model.ConnectionState
 import com.vauth.foxyvpn.data.model.emojiFlag
 import com.vauth.foxyvpn.ui.components.DynamicIsland
+import com.vauth.foxyvpn.ui.theme.AnimatedOdometerText
+import com.vauth.foxyvpn.ui.theme.LiveTrafficSparkline
 import com.vauth.foxyvpn.ui.theme.LocalFoxyStatusColors
 import com.vauth.foxyvpn.ui.theme.NeumorphicCard
 import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
+import com.vauth.foxyvpn.ui.theme.NeumorphicRadarPulse
 import com.vauth.foxyvpn.ui.theme.NeumorphicSlideToConnect
 import com.vauth.foxyvpn.ui.theme.ThemeController
 import com.vauth.foxyvpn.ui.theme.ThemeMode
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicSunken
+import com.vauth.foxyvpn.ui.theme.neumorphicTouchBounce
+import com.vauth.foxyvpn.ui.theme.shakeOnTrigger
+import com.vauth.foxyvpn.ui.theme.staggeredEntrance
+import com.vauth.foxyvpn.ui.theme.subtleFloatAnimation
 import com.vauth.foxyvpn.vpn.ExitCheck
 import com.vauth.foxyvpn.vpn.FoxyVpnService
 import com.vauth.foxyvpn.vpn.IpLocationInfo
@@ -98,6 +121,7 @@ fun HomeScreen(
     onDisconnect: () -> Unit,
     onOpenServers: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenTools: (Int) -> Unit = {},
 ) {
     val state by FoxyVpnService.state.collectAsState()
     val lastError by FoxyVpnService.lastError.collectAsState()
@@ -127,6 +151,22 @@ fun HomeScreen(
     var quotaRemaining by remember { mutableStateOf(app.settingsStore.cachedQuotaRemaining) }
     var quotaMax by remember { mutableStateOf(app.settingsStore.cachedQuotaMax) }
     var isUnlimited by remember { mutableStateOf(app.settingsStore.cachedIsUnlimited) }
+
+    // Rolling 24-sample history for live traffic waveform
+    val rxHistory = remember { mutableStateListOf<Long>().apply { repeat(24) { add(0L) } } }
+    val txHistory = remember { mutableStateListOf<Long>().apply { repeat(24) { add(0L) } } }
+
+    LaunchedEffect(liveStats, state) {
+        if (state == ConnectionState.CONNECTED) {
+            if (rxHistory.size >= 24) rxHistory.removeAt(0)
+            rxHistory.add(liveStats.rxRateBytesPerSec)
+            if (txHistory.size >= 24) txHistory.removeAt(0)
+            txHistory.add(liveStats.txRateBytesPerSec)
+        } else {
+            for (i in 0 until rxHistory.size) rxHistory[i] = 0L
+            for (i in 0 until txHistory.size) txHistory[i] = 0L
+        }
+    }
 
     LaunchedEffect(state) {
         if (state == ConnectionState.CONNECTED) {
@@ -177,6 +217,16 @@ fun HomeScreen(
         }
     }
 
+    val themeIconRotation by animateFloatAsState(
+        targetValue = when (themeController.mode) {
+            ThemeMode.SYSTEM -> 0f
+            ThemeMode.LIGHT -> 180f
+            ThemeMode.DARK -> 360f
+        },
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "theme-icon-rot",
+    )
+
     Scaffold(
         containerColor = neu.background,
         topBar = {
@@ -185,16 +235,20 @@ fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(34.dp)
+                                .subtleFloatAnimation(amplitudePx = 4f, durationMs = 2400)
                                 .clip(CircleShape)
-                                .background(neu.accent.copy(alpha = 0.18f)),
+                                .background(
+                                    if (state == ConnectionState.CONNECTED) statusColors.connected.copy(alpha = 0.2f)
+                                    else neu.accent.copy(alpha = 0.18f)
+                                ),
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Shield,
+                                imageVector = if (state == ConnectionState.CONNECTED) Icons.Filled.Security else Icons.Filled.Shield,
                                 contentDescription = null,
-                                tint = neu.accent,
-                                modifier = Modifier.size(18.dp),
+                                tint = if (state == ConnectionState.CONNECTED) statusColors.connected else neu.accent,
+                                modifier = Modifier.size(19.dp),
                             )
                         }
                         Spacer(Modifier.width(10.dp))
@@ -209,8 +263,19 @@ fun HomeScreen(
                     }
                 },
                 actions = {
+                    NeumorphicIconButton(
+                        size = 40.dp,
+                        onClick = { onOpenTools(0) },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Speed,
+                            contentDescription = "Network Tools",
+                            tint = neu.accent,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Spacer(Modifier.width(10.dp))
                     val mode = themeController.mode
-                    val showingDark = themeController.resolveDark(systemInDarkTheme)
                     NeumorphicIconButton(
                         size = 40.dp,
                         onClick = { themeController.toggle(systemInDarkTheme) },
@@ -223,7 +288,9 @@ fun HomeScreen(
                             },
                             contentDescription = "Toggle Theme",
                             tint = neu.textPrimary,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier
+                                .size(20.dp)
+                                .graphicsLayer { rotationZ = themeIconRotation },
                         )
                     }
                     Spacer(Modifier.width(10.dp))
@@ -271,46 +338,70 @@ fun HomeScreen(
                     onOpenServers = onOpenServers,
                 )
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(10.dp))
 
-                // Connection Status Hero
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(vertical = 12.dp),
-                ) {
-                    val statusText = when (state) {
-                        ConnectionState.CONNECTED -> "SECURE & CONNECTED"
-                        ConnectionState.CONNECTING -> "ESTABLISHING TUNNEL\u2026"
-                        ConnectionState.DISCONNECTED -> "NOT PROTECTED"
-                    }
-                    val statusColor = when (state) {
+                // Connection Status Hero with Concentric Radar Rings & Odometer Timer
+                val statusText = when (state) {
+                    ConnectionState.CONNECTED -> "SECURE & CONNECTED"
+                    ConnectionState.CONNECTING -> "ESTABLISHING TUNNEL\u2026"
+                    ConnectionState.DISCONNECTED -> "NOT PROTECTED"
+                }
+                val statusColor by animateColorAsState(
+                    targetValue = when (state) {
                         ConnectionState.CONNECTED -> statusColors.connected
                         ConnectionState.CONNECTING -> statusColors.connecting
                         ConnectionState.DISCONNECTED -> neu.textSecondary
-                    }
+                    },
+                    animationSpec = tween(400),
+                    label = "hero-status-color",
+                )
 
-                    Text(
-                        text = statusText,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                        ),
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .staggeredEntrance(0),
+                ) {
+                    NeumorphicRadarPulse(
                         color = statusColor,
-                    )
+                        isActive = state == ConnectionState.CONNECTED,
+                        isConnecting = state == ConnectionState.CONNECTING,
+                        size = 132.dp,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                        ) {
+                            AnimatedContent(
+                                targetState = statusText,
+                                transitionSpec = { fadeIn(tween(240)) togetherWith fadeOut(tween(180)) },
+                                label = "status-label-anim",
+                            ) { label ->
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.5.sp,
+                                    ),
+                                    color = statusColor,
+                                )
+                            }
 
-                    Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(6.dp))
 
-                    Text(
-                        text = if (state == ConnectionState.CONNECTED) formatDuration(elapsedSeconds) else "00:00:00",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.ExtraBold,
-                            fontFeatureSettings = "tnum",
-                        ),
-                        color = neu.textPrimary,
-                    )
+                            AnimatedOdometerText(
+                                text = if (state == ConnectionState.CONNECTED) formatDuration(elapsedSeconds) else "00:00:00",
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontFeatureSettings = "tnum",
+                                ),
+                                color = neu.textPrimary,
+                            )
+                        }
+                    }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(4.dp))
 
                 // SLIDE-TO-CONNECT PRIMARY CONTROLLER
                 NeumorphicSlideToConnect(
@@ -318,29 +409,125 @@ fun HomeScreen(
                     lastError = lastError,
                     onRequestConnect = onRequestConnect,
                     onDisconnect = onDisconnect,
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    modifier = Modifier
+                        .padding(vertical = 6.dp)
+                        .staggeredEntrance(1)
+                        .shakeOnTrigger(lastError),
                 )
 
                 val error = lastError
-                if (error != null && state != ConnectionState.CONNECTING) {
-                    Spacer(Modifier.height(8.dp))
+                AnimatedVisibility(
+                    visible = error != null && state != ConnectionState.CONNECTING,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
                     Text(
-                        text = error,
+                        text = error.orEmpty(),
                         textAlign = TextAlign.Center,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
                     )
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(14.dp))
+
+                // 5-TOOL QUICK NETWORK & SECURITY TOOLKIT HUB
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .staggeredEntrance(2),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "SMART TOOLS & DIAGNOSTICS (ابزارهای شبکه)",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.9.sp,
+                            ),
+                            color = neu.textSecondary,
+                        )
+                        Text(
+                            text = "Open All →",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = neu.accent,
+                            modifier = Modifier.clickable { onOpenTools(0) },
+                        )
+                    }
+
+                    Spacer(Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        NetworkToolTab.entries.forEachIndexed { idx, tool ->
+                            NeumorphicCard(
+                                onClick = {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onOpenTools(tool.id)
+                                },
+                                cornerRadius = 18.dp,
+                                modifier = Modifier
+                                    .width(136.dp)
+                                    .staggeredEntrance(idx + 2, delayPerItemMs = 50)
+                                    .neumorphicTouchBounce(),
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(neu.accent.copy(alpha = 0.15f)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = tool.icon,
+                                            contentDescription = tool.title,
+                                            tint = neu.accent,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                    Spacer(Modifier.height(8.dp))
+                                    Text(
+                                        text = tool.title,
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = neu.textPrimary,
+                                        maxLines = 1,
+                                    )
+                                    Text(
+                                        text = tool.persianSubtitle,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = neu.textSecondary,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
 
                 // Location Card (Raised Neumorphic)
                 NeumorphicCard(
                     onClick = onOpenServers,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .staggeredEntrance(3)
+                        .neumorphicTouchBounce(),
                     cornerRadius = 20.dp,
                 ) {
                     Row(
@@ -399,9 +586,13 @@ fun HomeScreen(
 
                 Spacer(Modifier.height(14.dp))
 
-                // Current IP Card (Raised Neumorphic)
+                // Current IP Card (Raised Neumorphic — Tap opens IP & Leak Inspector)
                 NeumorphicCard(
-                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onOpenTools(NetworkToolTab.LEAK_INSPECTOR.id) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .staggeredEntrance(4)
+                        .neumorphicTouchBounce(),
                     cornerRadius = 20.dp,
                 ) {
                     val isConnected = state == ConnectionState.CONNECTED
@@ -443,19 +634,25 @@ fun HomeScreen(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "CURRENT IP ADDRESS",
+                                "CURRENT IP • TAP FOR LEAK TEST",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp,
+                                    letterSpacing = 0.8.sp,
                                 ),
                                 color = neu.textSecondary,
                             )
                             Spacer(Modifier.height(2.dp))
-                            Text(
-                                ipDisplay,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = neu.textPrimary,
-                            )
+                            AnimatedContent(
+                                targetState = ipDisplay,
+                                transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(160)) },
+                                label = "ip-display-anim",
+                            ) { targetIp ->
+                                Text(
+                                    targetIp,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = neu.textPrimary,
+                                )
+                            }
                         }
 
                         val badgeColor = if (isConnected) statusColors.connected else MaterialTheme.colorScheme.error
@@ -476,9 +673,11 @@ fun HomeScreen(
 
                 Spacer(Modifier.height(14.dp))
 
-                // Telemetry & Quota Card (Raised Neumorphic)
+                // Telemetry, Live Waveform Sparkline & Quota Card (Raised Neumorphic)
                 NeumorphicCard(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .staggeredEntrance(5),
                     cornerRadius = 20.dp,
                 ) {
                     Column(Modifier.padding(18.dp)) {
@@ -568,7 +767,47 @@ fun HomeScreen(
                             }
                         }
 
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(14.dp))
+
+                        // Live Traffic Waveform Sparkline Graph
+                        val waveShape = RoundedCornerShape(12.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .neumorphicSunken(
+                                    shape = waveShape,
+                                    cornerRadius = 12.dp,
+                                    depth = 2.dp,
+                                    surfaceColor = neu.surfaceElevated,
+                                )
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        ) {
+                            LiveTrafficSparkline(
+                                rxHistory = rxHistory,
+                                txHistory = txHistory,
+                                rxColor = if (isConnected) statusColors.connected else neu.accent,
+                                txColor = statusColors.connecting,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(
+                                    text = "↓ ${formatBytesPerSecond(liveStats.rxRateBytesPerSec)}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = if (isConnected) statusColors.connected else neu.textSecondary,
+                                )
+                                Text(
+                                    text = "↑ ${formatBytesPerSecond(liveStats.txRateBytesPerSec)}",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = statusColors.connecting,
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(14.dp))
 
                         // Quota Details & Sunken Progress Bar
                         Row(
@@ -597,12 +836,17 @@ fun HomeScreen(
 
                         Spacer(Modifier.height(8.dp))
 
-                        val quotaFraction = when {
+                        val rawQuotaFraction = when {
                             isUnlimited -> 1f
                             max != null && max > 0L && remaining != null ->
                                 (remaining.toFloat() / max.toFloat()).coerceIn(0f, 1f)
                             else -> 0f
                         }
+                        val animatedQuotaFraction by animateFloatAsState(
+                            targetValue = rawQuotaFraction,
+                            animationSpec = tween(600, easing = FastOutSlowInEasing),
+                            label = "quota-bar-fill",
+                        )
 
                         // Sunken Neumorphic Progress Track
                         val progressShape = RoundedCornerShape(6.dp)
@@ -619,7 +863,7 @@ fun HomeScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth(quotaFraction)
+                                    .fillMaxWidth(animatedQuotaFraction)
                                     .fillMaxSize()
                                     .clip(progressShape)
                                     .background(

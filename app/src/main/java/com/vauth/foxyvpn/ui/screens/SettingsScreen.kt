@@ -77,6 +77,7 @@ import com.vauth.foxyvpn.quicksettings.DynamicIslandOverlayService
 import com.vauth.foxyvpn.ui.theme.NeumorphicCard
 import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
+import com.vauth.foxyvpn.ui.theme.staggeredEntrance
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -87,6 +88,7 @@ private const val GITHUB_URL = "https://github.com/vauth/foxyvpn"
 fun SettingsScreen(
     settingsStore: SettingsStore,
     onOpenLogs: () -> Unit,
+    onOpenTools: (Int) -> Unit = {},
     onSignOut: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -378,9 +380,55 @@ fun SettingsScreen(
         ) {
             Box(modifier = Modifier.widthIn(max = 600.dp)) {
                 Column {
+                    // SMART NETWORK & SECURITY TOOLKIT (5 OPTIONS)
+                    SectionHeading("SMART NETWORK & SECURITY TOOLKIT (۵ ابزار ویژه)")
+                    NeumorphicCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .staggeredEntrance(0),
+                    ) {
+                        Column(Modifier.padding(14.dp)) {
+                            SettingClickableRow(
+                                title = "1. Real Speed Test (تست سرعت دانلود و آپلود)",
+                                value = "Measure live Download, Upload, Ping & Jitter",
+                                onClick = { onOpenTools(0) },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "2. IP, DNS & Leak Inspector (تست نشتی و ایپی)",
+                                value = "Compare ISP IP vs VPN Exit IP, DoH DNS & IPv6 leak guard",
+                                onClick = { onOpenTools(1) },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "3. Smart Fastest Server Scanner (یافتن سریع‌ترین سرور)",
+                                value = "Benchmark all edge locations and auto-connect to #1",
+                                onClick = { onOpenTools(2) },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "4. Keep-Alive & Auto-Reconnect Watchdog (ضدقطع‌شدن)",
+                                value = "Configure anti-idle heartbeat pulses and auto-redial",
+                                onClick = { onOpenTools(3) },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "5. Smart MTU & Anti-DPI Optimizer (بهینه‌ساز MTU و فرگمنت)",
+                                value = "Probe optimal MTU size and TLS SNI fragmentation",
+                                onClick = { onOpenTools(4) },
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
                     // DYNAMIC ISLAND SECTION
                     SectionHeading("DYNAMIC ISLAND (iOS STYLE)")
-                    NeumorphicCard(modifier = Modifier.fillMaxWidth()) {
+                    NeumorphicCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .staggeredEntrance(1),
+                    ) {
                         Column(Modifier.padding(14.dp)) {
                             SettingToggleRow(
                                 title = "Enable Dynamic Island",
