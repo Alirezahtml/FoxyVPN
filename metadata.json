@@ -1,6 +1,6 @@
 {
-  "name": "FoxyVPN",
-  "description": "FoxyVPN Android application",
+  "name": "FoxyVPN Neu",
+  "description": "Soft Neumorphic edition of FoxyVPN with Slide-to-Connect and Dynamic Island",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

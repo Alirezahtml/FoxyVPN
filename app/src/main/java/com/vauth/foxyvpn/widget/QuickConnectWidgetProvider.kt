@@ -70,7 +70,7 @@ class QuickConnectWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        const val ACTION_TOGGLE_VPN = "com.vauth.foxyvpn.action.TOGGLE_VPN"
+        const val ACTION_TOGGLE_VPN = "com.vauth.foxyvpn.neu.action.TOGGLE_VPN"
 
         fun updateAll(context: Context, state: ConnectionState) {
             val appWidgetManager = AppWidgetManager.getInstance(context) ?: return

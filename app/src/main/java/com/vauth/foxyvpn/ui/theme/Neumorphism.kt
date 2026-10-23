@@ -425,8 +425,13 @@ fun NeumorphicSlideToConnect(
     // Drag offset in px
     val offsetX = remember { Animatable(0f) }
 
+    var isDisconnecting by remember { mutableStateOf(false) }
+
     // When connection state changes, reset or position thumb
     LaunchedEffect(state, maxDragPx) {
+        if (state != ConnectionState.CONNECTED) {
+            isDisconnecting = false
+        }
         if (maxDragPx > 0f) {
             when (state) {
                 ConnectionState.CONNECTED -> {
@@ -453,24 +458,33 @@ fun NeumorphicSlideToConnect(
         label = "pulse-alpha",
     )
 
-    val trackBgColor = when (state) {
-        ConnectionState.CONNECTED -> statusColors.connected.copy(alpha = 0.12f)
-        ConnectionState.CONNECTING -> statusColors.connecting.copy(alpha = 0.15f)
-        ConnectionState.DISCONNECTED -> neu.surface
+    val hasError = state == ConnectionState.DISCONNECTED && !lastError.isNullOrBlank()
+    val errorColor = MaterialTheme.colorScheme.error
+
+    val trackBgColor = when {
+        isDisconnecting -> statusColors.connecting.copy(alpha = 0.14f)
+        state == ConnectionState.CONNECTED -> statusColors.connected.copy(alpha = 0.12f)
+        state == ConnectionState.CONNECTING -> statusColors.connecting.copy(alpha = 0.15f)
+        hasError -> errorColor.copy(alpha = 0.10f)
+        else -> neu.surface
     }
 
-    val thumbAccentColor = when (state) {
-        ConnectionState.CONNECTED -> statusColors.connected
-        ConnectionState.CONNECTING -> statusColors.connecting
-        ConnectionState.DISCONNECTED -> neu.accent
+    val thumbAccentColor = when {
+        isDisconnecting -> statusColors.connecting
+        state == ConnectionState.CONNECTED -> statusColors.connected
+        state == ConnectionState.CONNECTING -> statusColors.connecting
+        hasError -> errorColor
+        else -> neu.accent
     }
 
     val trackShape = RoundedCornerShape(trackCornerRadius)
     val thumbShape = CircleShape
 
+    val dragProgress = if (maxDragPx > 0f) (offsetX.value / maxDragPx).coerceIn(0f, 1f) else 0f
+
     val dragModifier = Modifier.draggable(
         orientation = Orientation.Horizontal,
-        enabled = state != ConnectionState.CONNECTING,
+        enabled = state != ConnectionState.CONNECTING && !isDisconnecting,
         state = rememberDraggableState { delta ->
             if (maxDragPx > 0f) {
                 coroutineScope.launch {
@@ -487,7 +501,6 @@ fun NeumorphicSlideToConnect(
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             offsetX.animateTo(maxDragPx, spring(stiffness = 500f))
                             onRequestConnect()
-                            // If VPN permission dialog is shown or state stays DISCONNECTED, reset thumb cleanly
                             kotlinx.coroutines.delay(350)
                             if (state == ConnectionState.DISCONNECTED) {
                                 offsetX.animateTo(0f, spring(stiffness = 400f))
@@ -499,8 +512,11 @@ fun NeumorphicSlideToConnect(
                     ConnectionState.CONNECTED -> {
                         if (offsetX.value <= maxDragPx * 0.45f) {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            isDisconnecting = true
                             offsetX.animateTo(0f, spring(stiffness = 500f))
                             onDisconnect()
+                            kotlinx.coroutines.delay(400)
+                            isDisconnecting = false
                         } else {
                             offsetX.animateTo(maxDragPx, spring(stiffness = 500f))
                         }
@@ -530,7 +546,11 @@ fun NeumorphicSlideToConnect(
             .background(neu.surface)
             .border(
                 width = 1.dp,
-                color = if (neu.isDark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.65f),
+                color = when {
+                    hasError -> errorColor.copy(alpha = 0.45f)
+                    neu.isDark -> Color.White.copy(alpha = 0.05f)
+                    else -> Color.White.copy(alpha = 0.65f)
+                },
                 shape = trackShape,
             )
             .neumorphicSunken(
@@ -545,36 +565,55 @@ fun NeumorphicSlideToConnect(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
-            when (state) {
-                ConnectionState.DISCONNECTED -> {
+            when {
+                isDisconnecting -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            strokeWidth = 2.5.dp,
+                            modifier = Modifier.size(18.dp),
+                            color = statusColors.connecting,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = "Disconnecting\u2026",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = statusColors.connecting,
+                        )
+                    }
+                }
+                state == ConnectionState.DISCONNECTED -> {
+                    val labelAlpha = (1f - dragProgress * 1.4f).coerceIn(0f, 1f)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(start = 36.dp),
+                        modifier = Modifier
+                            .padding(start = 52.dp)
+                            .graphicsLayer { alpha = labelAlpha },
                     ) {
                         Text(
-                            text = "Slide to Connect",
+                            text = if (hasError) "Slide to Retry Connection" else "Slide to Connect",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.5.sp,
+                                letterSpacing = 0.4.sp,
                             ),
-                            color = neu.textPrimary.copy(alpha = 0.75f),
+                            color = if (hasError) errorColor else neu.textPrimary.copy(alpha = 0.78f),
                         )
                         Spacer(Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
-                            tint = neu.accent.copy(alpha = pulseAlpha),
+                            tint = (if (hasError) errorColor else neu.accent).copy(alpha = pulseAlpha),
                             modifier = Modifier.size(18.dp),
                         )
                     }
                 }
-                ConnectionState.CONNECTING -> {
+                state == ConnectionState.CONNECTING -> {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
+                            .padding(end = 52.dp)
                             .clickable {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onDisconnect()
@@ -593,10 +632,13 @@ fun NeumorphicSlideToConnect(
                         )
                     }
                 }
-                ConnectionState.CONNECTED -> {
+                state == ConnectionState.CONNECTED -> {
+                    val labelAlpha = (dragProgress * 1.4f - 0.4f).coerceIn(0f, 1f)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(end = 40.dp),
+                        modifier = Modifier
+                            .padding(end = 52.dp)
+                            .graphicsLayer { alpha = labelAlpha },
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Logout,
@@ -609,7 +651,7 @@ fun NeumorphicSlideToConnect(
                             text = "Slide left to Disconnect",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.5.sp,
+                                letterSpacing = 0.4.sp,
                             ),
                             color = statusColors.connected,
                         )
@@ -662,7 +704,16 @@ fun NeumorphicSlideToConnect(
                                 }
                             }
                         }
-                        ConnectionState.CONNECTED, ConnectionState.CONNECTING -> {
+                        ConnectionState.CONNECTED -> {
+                            coroutineScope.launch {
+                                isDisconnecting = true
+                                offsetX.animateTo(0f, spring(stiffness = 400f))
+                                onDisconnect()
+                                kotlinx.coroutines.delay(400)
+                                isDisconnecting = false
+                            }
+                        }
+                        ConnectionState.CONNECTING -> {
                             coroutineScope.launch {
                                 offsetX.animateTo(0f, spring(stiffness = 400f))
                                 onDisconnect()
@@ -672,8 +723,15 @@ fun NeumorphicSlideToConnect(
                 },
             contentAlignment = Alignment.Center,
         ) {
-            when (state) {
-                ConnectionState.DISCONNECTED -> {
+            when {
+                isDisconnecting || state == ConnectionState.CONNECTING -> {
+                    CircularProgressIndicator(
+                        strokeWidth = 2.5.dp,
+                        modifier = Modifier.size(22.dp),
+                        color = Color.White,
+                    )
+                }
+                state == ConnectionState.DISCONNECTED -> {
                     Icon(
                         imageVector = Icons.Filled.PowerSettingsNew,
                         contentDescription = "Slide to connect",
@@ -681,14 +739,7 @@ fun NeumorphicSlideToConnect(
                         modifier = Modifier.size(24.dp),
                     )
                 }
-                ConnectionState.CONNECTING -> {
-                    CircularProgressIndicator(
-                        strokeWidth = 2.5.dp,
-                        modifier = Modifier.size(22.dp),
-                        color = Color.White,
-                    )
-                }
-                ConnectionState.CONNECTED -> {
+                state == ConnectionState.CONNECTED -> {
                     Icon(
                         imageVector = Icons.Filled.Check,
                         contentDescription = "Connected",

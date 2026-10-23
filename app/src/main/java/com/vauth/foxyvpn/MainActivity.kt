@@ -8,12 +8,14 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.navigation.compose.rememberNavController
+import com.vauth.foxyvpn.quicksettings.DynamicIslandOverlayService
 import com.vauth.foxyvpn.ui.navigation.FoxyNavGraph
 import com.vauth.foxyvpn.ui.theme.FoxyVpnTheme
 import com.vauth.foxyvpn.ui.theme.rememberThemeController
@@ -43,7 +45,11 @@ class MainActivity : ComponentActivity() {
     ) {  }
 
     private fun requestConnect() {
-        if ((application as FoxyVpnApp).settingsStore.proxyOnlyMode) {
+        val app = application as FoxyVpnApp
+        if (app.settingsStore.dynamicIslandEnabled && app.settingsStore.dynamicIslandOverlayEnabled) {
+            DynamicIslandOverlayService.start(this)
+        }
+        if (app.settingsStore.proxyOnlyMode) {
             requestNotificationPermissionIfNeeded()
             FoxyVpnService.start(this)
             return
@@ -71,7 +77,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         val app = application as FoxyVpnApp
+        if (app.settingsStore.dynamicIslandEnabled && app.settingsStore.dynamicIslandOverlayEnabled) {
+            DynamicIslandOverlayService.start(this)
+        }
         setContent {
 
             val themeController = rememberThemeController(app.settingsStore)

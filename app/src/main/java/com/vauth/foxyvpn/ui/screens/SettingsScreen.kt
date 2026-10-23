@@ -118,6 +118,7 @@ fun SettingsScreen(
     var dynamicIslandEnabled by remember { mutableStateOf(settingsStore.dynamicIslandEnabled) }
     var dynamicIslandOverlayEnabled by remember { mutableStateOf(settingsStore.dynamicIslandOverlayEnabled) }
     var dynamicIslandSize by remember { mutableStateOf(settingsStore.dynamicIslandSize) }
+    var dynamicIslandCornerRadius by remember { mutableStateOf(settingsStore.dynamicIslandCornerRadius) }
     var dynamicIslandPosition by remember { mutableStateOf(settingsStore.dynamicIslandPosition) }
     var dynamicIslandTheme by remember { mutableStateOf(settingsStore.dynamicIslandTheme) }
     var dynamicIslandShowSpeed by remember { mutableStateOf(settingsStore.dynamicIslandShowSpeed) }
@@ -140,8 +141,21 @@ fun SettingsScreen(
     var showSplitTunnelDialog by remember { mutableStateOf(false) }
     var showTlsSplitDialog by remember { mutableStateOf(false) }
     var showIslandSizeDialog by remember { mutableStateOf(false) }
+    var showIslandCornerRadiusDialog by remember { mutableStateOf(false) }
     var showIslandPositionDialog by remember { mutableStateOf(false) }
     var showIslandThemeDialog by remember { mutableStateOf(false) }
+
+    if (showIslandCornerRadiusDialog) {
+        DynamicIslandCornerRadiusDialog(
+            current = dynamicIslandCornerRadius,
+            onDismiss = { showIslandCornerRadiusDialog = false },
+            onConfirm = {
+                dynamicIslandCornerRadius = it
+                settingsStore.dynamicIslandCornerRadius = it
+                showIslandCornerRadiusDialog = false
+            },
+        )
+    }
 
     if (showIslandSizeDialog) {
         DynamicIslandSizeDialog(
@@ -414,6 +428,14 @@ fun SettingsScreen(
                                     title = "Island Size",
                                     value = dynamicIslandSize.label,
                                     onClick = { showIslandSizeDialog = true },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingClickableRow(
+                                    title = "Corner Roundness",
+                                    value = "${dynamicIslandCornerRadius} dp",
+                                    onClick = { showIslandCornerRadiusDialog = true },
                                 )
 
                                 HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
@@ -837,6 +859,49 @@ private fun DynamicIslandSizeDialog(
                         RadioButton(selected == size, onClick = { selected = size })
                         Spacer(Modifier.width(10.dp))
                         Text(size.label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun DynamicIslandCornerRadiusDialog(
+    current: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+) {
+    val presets = listOf(
+        14 to "Soft Rounded (14 dp)",
+        20 to "Balanced Pill (20 dp)",
+        24 to "Default iOS Capsule (24 dp)",
+        30 to "Deep Capsule (30 dp)",
+        36 to "Full Stadium (36 dp)",
+    )
+    var selected by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Corner Roundness") },
+        text = {
+            Column {
+                presets.forEach { (radius, label) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(selected == radius, onClick = { selected = radius })
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected == radius, onClick = { selected = radius })
+                        Spacer(Modifier.width(10.dp))
+                        Text(label, style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }

@@ -6,10 +6,14 @@ import androidx.security.crypto.MasterKey
 import com.vauth.foxyvpn.ui.theme.ThemeMode
 import com.vauth.foxyvpn.vpn.FoxyVpnService
 import com.vauth.foxyvpn.widget.QuickConnectWidgetProvider
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class SettingsStore(context: Context) {
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences("foxyvpn_settings", Context.MODE_PRIVATE)
+    private val _islandConfigRevision = MutableStateFlow(0)
+    val islandConfigRevision: StateFlow<Int> = _islandConfigRevision
 
     private val credentialsPrefs by lazy {
         val masterKey = MasterKey.Builder(appContext)
@@ -196,53 +200,86 @@ class SettingsStore(context: Context) {
 
     var dynamicIslandEnabled: Boolean
         get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_ENABLED, true)
-        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_ENABLED, value).apply() }
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_ENABLED, value).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandOverlayEnabled: Boolean
         get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_OVERLAY_ENABLED, false)
-        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_OVERLAY_ENABLED, value).apply() }
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_OVERLAY_ENABLED, value).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandSize: DynamicIslandSize
         get() = DynamicIslandSize.entries.firstOrNull {
             it.name == prefs.getString(KEY_DYNAMIC_ISLAND_SIZE, null)
         } ?: DynamicIslandSize.REGULAR
-        set(value) { prefs.edit().putString(KEY_DYNAMIC_ISLAND_SIZE, value.name).apply() }
+        set(value) {
+            prefs.edit().putString(KEY_DYNAMIC_ISLAND_SIZE, value.name).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandCornerRadius: Int
         get() = prefs.getInt(KEY_DYNAMIC_ISLAND_CORNER_RADIUS, 24)
-        set(value) { prefs.edit().putInt(KEY_DYNAMIC_ISLAND_CORNER_RADIUS, value.coerceIn(12, 36)).apply() }
+        set(value) {
+            prefs.edit().putInt(KEY_DYNAMIC_ISLAND_CORNER_RADIUS, value.coerceIn(12, 36)).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandPosition: DynamicIslandPosition
         get() = DynamicIslandPosition.entries.firstOrNull {
             it.name == prefs.getString(KEY_DYNAMIC_ISLAND_POSITION, null)
         } ?: DynamicIslandPosition.TOP_CENTER
-        set(value) { prefs.edit().putString(KEY_DYNAMIC_ISLAND_POSITION, value.name).apply() }
+        set(value) {
+            prefs.edit().putString(KEY_DYNAMIC_ISLAND_POSITION, value.name).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandTheme: DynamicIslandTheme
         get() = DynamicIslandTheme.entries.firstOrNull {
             it.name == prefs.getString(KEY_DYNAMIC_ISLAND_THEME, null)
         } ?: DynamicIslandTheme.NEUMORPHIC
-        set(value) { prefs.edit().putString(KEY_DYNAMIC_ISLAND_THEME, value.name).apply() }
+        set(value) {
+            prefs.edit().putString(KEY_DYNAMIC_ISLAND_THEME, value.name).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandShowSpeed: Boolean
         get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_SHOW_SPEED, true)
-        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_SPEED, value).apply() }
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_SPEED, value).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandShowPing: Boolean
         get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_SHOW_PING, true)
-        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_PING, value).apply() }
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_PING, value).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandShowFlag: Boolean
         get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_SHOW_FLAG, true)
-        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_FLAG, value).apply() }
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_FLAG, value).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandShowTimer: Boolean
         get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_SHOW_TIMER, true)
-        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_TIMER, value).apply() }
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_TIMER, value).apply()
+            _islandConfigRevision.value++
+        }
 
     var dynamicIslandAnimation: Boolean
         get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_ANIMATION, true)
-        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_ANIMATION, value).apply() }
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_ANIMATION, value).apply()
+            _islandConfigRevision.value++
+        }
 
     enum class DynamicIslandSize(
         val label: String,

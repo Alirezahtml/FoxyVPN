@@ -106,8 +106,8 @@ private const val SPEED_UPDATE_INTERVAL_MS = 2_000L
 private const val TUN_ADDRESS_IPV6 = "fd00:1:fd00:1:fd00:1:fd00:1"
 private const val TUN_PREFIX_LENGTH_IPV6 = 128
 
-private const val WAKE_LOCK_TAG = "com.vauth.foxyvpn:vpn"
-private const val WIFI_LOCK_TAG = "com.vauth.foxyvpn:vpn-wifi"
+private const val WAKE_LOCK_TAG = "com.vauth.foxyvpn.neu:vpn"
+private const val WIFI_LOCK_TAG = "com.vauth.foxyvpn.neu:vpn-wifi"
 
 private fun fullJitterBackoffMs(attempt: Int, baseMs: Long, capMs: Long): Long {
     val exponential = baseMs * (1L shl attempt.coerceIn(0, 10))
@@ -1250,8 +1250,8 @@ class FoxyVpnService : VpnService() {
     }
 
     companion object {
-        const val ACTION_CONNECT = "com.vauth.foxyvpn.action.CONNECT"
-        const val ACTION_DISCONNECT = "com.vauth.foxyvpn.action.DISCONNECT"
+        const val ACTION_CONNECT = "com.vauth.foxyvpn.neu.action.CONNECT"
+        const val ACTION_DISCONNECT = "com.vauth.foxyvpn.neu.action.DISCONNECT"
         private const val NOTIFICATION_ID = 1
         private const val REQUEST_CODE_OPEN = 0
         private const val REQUEST_CODE_DISCONNECT = 1

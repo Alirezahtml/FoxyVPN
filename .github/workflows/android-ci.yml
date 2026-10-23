@@ -1,4 +1,4 @@
-name: Android CI / CD
+name: Android CI / CD (Auto APK Release)
 
 on:
   push:
@@ -8,9 +8,12 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  build:
-    name: Build Debug APK
+  build-and-deliver:
+    name: Build & Deliver Installable APKs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -33,84 +36,72 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
-      - name: Decode Debug Keystore (if present)
+      - name: Prepare Signing Keystores (Zero-Config Fallback)
+        id: signing
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         run: |
           if [ -f "debug.keystore.base64" ] && [ ! -f "debug.keystore" ]; then
             base64 -d debug.keystore.base64 > debug.keystore || true
           fi
-
-      - name: Assemble Debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
-
-      - name: Upload Debug APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: foxyvpn-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          retention-days: 14
-
-  release:
-    name: Build & Publish Release APK
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-          cache: gradle
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.10.2"
-
-      - name: Decode Release Keystore
-        id: signing
-        env:
-          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$SIGNING_KEYSTORE_BASE64" ]; then
+          if [ ! -f "debug.keystore" ]; then
+            keytool -genkeypair -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          if [ -n "$SIGNING_KEYSTORE_BASE64" ] && [ -n "$SIGNING_KEY_ALIAS" ]; then
             printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > release-keystore.jks
-            echo "signed=true" >> "$GITHUB_OUTPUT"
-            echo "Release keystore decoded; creating signed APK."
+            echo "KEY_ALIAS=$SIGNING_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "STORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "Using custom release keystore from GitHub Secrets."
           else
-            echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "SIGNING_KEYSTORE_BASE64 secret not found; creating unsigned release APK."
+            cp debug.keystore release-keystore.jks
+            echo "KEY_ALIAS=androiddebugkey" >> "$GITHUB_ENV"
+            echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
+            echo "STORE_PASSWORD=android" >> "$GITHUB_ENV"
+            echo "No custom signing secrets needed; automatically signing Release APK for direct installation."
           fi
 
-      - name: Assemble Release APK
+      - name: Assemble Signed Debug & Release APKs
         env:
-          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-        run: gradle assembleRelease --no-daemon --stacktrace
+          SIGNING_KEY_ALIAS: ${{ env.KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ env.STORE_PASSWORD }}
+        run: |
+          gradle assembleDebug assembleRelease --no-daemon --stacktrace
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/*.apk dist/FoxyVPN-Neu-debug.apk
+          cp app/build/outputs/apk/release/*.apk dist/FoxyVPN-Neu-release.apk
+          ls -lh dist/
 
-      - name: Clean Keystore
+      - name: Clean Temporary Keystore
         if: always()
         run: rm -f release-keystore.jks
 
-      - name: Upload Release APK Artifact
+      - name: Upload Ready-to-Install APK Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: foxyvpn-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          name: FoxyVPN-Neu-Installable-APKs
+          path: dist/*.apk
           retention-days: 30
 
-      - name: Publish GitHub Release
+      - name: Automatically Publish Direct APK to GitHub Releases
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/release/*.apk
-          generate_release_notes: true
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'latest-apk' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'FoxyVPN Neu - Direct Install APK (Latest Build)' }}
+          body: |
+            ### FoxyVPN Neu (Soft Neumorphism + Dynamic Island)
+            - **Package ID:** `com.vauth.foxyvpn.neu` (نصب کاملاً مستقل و بدون تداخل در کنار نسخه اصلی FoxyVPN)
+            - **موتور بومی:** `libhev-socks5-tunnel.so` برای تمام معماری‌ها (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`)
+            - **فایل‌های نصبی مستقیم (امضاشده و آماده نصب روی اندروید):**
+              - `FoxyVPN-Neu-release.apk` (نسخه بهینه و نهایی)
+              - `FoxyVPN-Neu-debug.apk` (نسخه دیباگ)
+          files: |
+            dist/FoxyVPN-Neu-release.apk
+            dist/FoxyVPN-Neu-debug.apk
+          prerelease: false
+          make_latest: true

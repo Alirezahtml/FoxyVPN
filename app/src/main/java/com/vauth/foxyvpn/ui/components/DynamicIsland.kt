@@ -75,6 +75,7 @@ import com.vauth.foxyvpn.ui.theme.neumorphicRaised
 import com.vauth.foxyvpn.vpn.FoxyVpnService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import androidx.compose.foundation.layout.heightIn
 import java.util.Locale
 
 @Composable
@@ -86,13 +87,16 @@ fun DynamicIsland(
     onOpenServers: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val configRevision by settingsStore.islandConfigRevision.collectAsState()
+    @Suppress("UNUSED_EXPRESSION")
+    configRevision
+
     if (!settingsStore.dynamicIslandEnabled) return
 
     val state by FoxyVpnService.state.collectAsState()
     val liveStats by FoxyVpnService.vpnLiveStats.collectAsState()
     val connectedAtEpochMs by FoxyVpnService.connectedAtEpochMs.collectAsState()
     val pingLatency by FoxyVpnService.pingLatencyMs.collectAsState()
-    val vpnEdgeIp by FoxyVpnService.vpnEdgeIp.collectAsState()
 
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
@@ -129,7 +133,7 @@ fun DynamicIsland(
     val pillBgColor = when (islandTheme) {
         SettingsStore.DynamicIslandTheme.DARK -> Color(0xFF0A0C10)
         SettingsStore.DynamicIslandTheme.ACCENT -> neu.accent.copy(alpha = 0.95f)
-        SettingsStore.DynamicIslandTheme.NEUMORPHIC -> if (neu.isDark) Color(0xFF16191F) else Color(0xFFE2E7EF)
+        SettingsStore.DynamicIslandTheme.NEUMORPHIC -> if (neu.isDark) Color(0xFF1A1E25) else Color(0xFFE4E9F1)
     }
 
     val contentColor = when (islandTheme) {
@@ -162,7 +166,8 @@ fun DynamicIsland(
 
         Box(
             modifier = Modifier
-                .widthIn(min = sizeConfig.widthDp.dp, max = if (isExpanded) 420.dp else (sizeConfig.widthDp + 40).dp)
+                .widthIn(min = sizeConfig.widthDp.dp, max = if (isExpanded) 420.dp else (sizeConfig.widthDp + 64).dp)
+                .heightIn(min = if (isExpanded) 130.dp else sizeConfig.heightDp.dp)
                 .neumorphicRaised(
                     shape = shape,
                     cornerRadius = pillCornerRadius,
@@ -177,7 +182,7 @@ fun DynamicIsland(
                     color = when (state) {
                         ConnectionState.CONNECTED -> statusColors.connected.copy(alpha = if (settingsStore.dynamicIslandAnimation) glowAlpha * 0.7f else 0.4f)
                         ConnectionState.CONNECTING -> statusColors.connecting.copy(alpha = if (settingsStore.dynamicIslandAnimation) glowAlpha * 0.7f else 0.4f)
-                        ConnectionState.DISCONNECTED -> Color.White.copy(alpha = if (neu.isDark) 0.08f else 0.5f)
+                        ConnectionState.DISCONNECTED -> Color.White.copy(alpha = if (neu.isDark) 0.08f else 0.55f)
                     },
                     shape = shape,
                 )
@@ -188,7 +193,8 @@ fun DynamicIsland(
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     isExpanded = !isExpanded
                 }
-                .padding(horizontal = if (isExpanded) 18.dp else 12.dp, vertical = if (isExpanded) 16.dp else 8.dp),
+                .padding(horizontal = if (isExpanded) 18.dp else 14.dp, vertical = if (isExpanded) 16.dp else 8.dp),
+            contentAlignment = Alignment.Center,
         ) {
             if (!isExpanded) {
                 // Collapsed Compact Island Pill
@@ -254,7 +260,14 @@ fun DynamicIsland(
                                 )
                             }
 
-                            if (settingsStore.dynamicIslandShowPing && pingLatency != null) {
+                            if (settingsStore.dynamicIslandShowSpeed && (liveStats.rxRateBytesPerSec > 0 || liveStats.txRateBytesPerSec > 0)) {
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = "↓${formatBytesPerSecond(liveStats.rxRateBytesPerSec)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = contentColor.copy(alpha = 0.85f),
+                                )
+                            } else if (settingsStore.dynamicIslandShowPing && pingLatency != null) {
                                 Spacer(Modifier.width(8.dp))
                                 Text(
                                     text = "${pingLatency}ms",
@@ -278,9 +291,9 @@ fun DynamicIsland(
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
-                                text = "Off",
+                                text = "Ready",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = neu.textSecondary,
+                                color = contentColor.copy(alpha = 0.6f),
                             )
                         }
                     }

@@ -255,7 +255,11 @@ fun ServerListScreen(
                     )
                     else -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 6.dp,
+                            vertical = 10.dp,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         items(
                             rows,

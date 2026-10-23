@@ -11,7 +11,8 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
-import android.widget.TextView
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -89,8 +90,11 @@ class DynamicIslandOverlayService : Service(), LifecycleOwner, ViewModelStoreOwn
             setViewTreeSavedStateRegistryOwner(this@DynamicIslandOverlayService)
             setViewTreeViewModelStoreOwner(this@DynamicIslandOverlayService)
             setContent {
+                val revision by app.settingsStore.islandConfigRevision.collectAsState()
+                @Suppress("UNUSED_EXPRESSION")
+                revision
+                val proxy by app.proxyStateStore.selectedProxyFlow.collectAsState()
                 FoxyVpnTheme(themeMode = app.settingsStore.themeMode) {
-                    val proxy = app.proxyStateStore.load()
                     DynamicIsland(
                         settingsStore = app.settingsStore,
                         selectedProxy = proxy,
