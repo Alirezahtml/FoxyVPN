@@ -99,7 +99,7 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun FoxyVpnTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val systemInDarkTheme = isSystemInDarkTheme()
@@ -117,6 +117,32 @@ fun FoxyVpnTheme(
         else -> LightColors
     }
 
+    val neuColors = if (darkTheme) {
+        NeumorphicColors(
+            background = NeuDarkBg,
+            surface = NeuDarkSurface,
+            surfaceElevated = NeuDarkSurfaceElevated,
+            shadowLight = NeuDarkShadowLight,
+            shadowDark = NeuDarkShadowDark,
+            accent = md_theme_dark_primary,
+            textPrimary = md_theme_dark_onBackground,
+            textSecondary = md_theme_dark_onSurfaceVariant,
+            isDark = true,
+        )
+    } else {
+        NeumorphicColors(
+            background = NeuLightBg,
+            surface = NeuLightSurface,
+            surfaceElevated = NeuLightSurfaceElevated,
+            shadowLight = NeuLightShadowLight,
+            shadowDark = NeuLightShadowDark,
+            accent = md_theme_light_primary,
+            textPrimary = md_theme_light_onBackground,
+            textSecondary = md_theme_light_onSurfaceVariant,
+            isDark = false,
+        )
+    }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -130,6 +156,7 @@ fun FoxyVpnTheme(
 
     CompositionLocalProvider(
         LocalFoxyStatusColors provides if (darkTheme) DarkStatusColors else LightStatusColors,
+        LocalNeumorphicColors provides neuColors,
         LocalLayoutDirection provides LayoutDirection.Ltr,
     ) {
         MaterialExpressiveTheme(

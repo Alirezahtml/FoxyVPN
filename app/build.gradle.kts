@@ -1,32 +1,11 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
 }
-
-val hevSocks5TunnelVersion = "2.17.1"
-val hevSocks5TunnelDir = file("src/main/jni")
-
-val fetchHevSocks5Tunnel = tasks.register<Exec>("fetchHevSocks5Tunnel") {
-    val marker = File(hevSocks5TunnelDir, "Android.mk")
-    outputs.file(marker)
-    onlyIf { !marker.exists() }
-    doFirst { hevSocks5TunnelDir.mkdirs() }
-    commandLine(
-        "git", "clone",
-        "--branch", hevSocks5TunnelVersion,
-        "--depth", "1",
-        "--recursive",
-        "--shallow-submodules",
-        "https://github.com/heiher/hev-socks5-tunnel.git",
-        hevSocks5TunnelDir.absolutePath,
-    )
-}
-
-tasks.matching { it.name.startsWith("externalNativeBuild") || it.name.contains("NdkBuild") }
-    .configureEach { dependsOn(fetchHevSocks5Tunnel) }
-tasks.named("preBuild").configure { dependsOn(fetchHevSocks5Tunnel) }
 
 val releaseKeystoreFile = rootProject.file("release-keystore.jks")
 val releaseKeyAlias: String? = System.getenv("SIGNING_KEY_ALIAS")
@@ -41,35 +20,33 @@ android {
     namespace = "com.vauth.foxyvpn"
     compileSdk = 35
 
-    ndkVersion = "26.1.10909125"
-
     defaultConfig {
         applicationId = "com.vauth.foxyvpn"
         minSdk = 26
         targetSdk = 35
         versionCode = 44
         versionName = "1.0.7"
-
-        externalNativeBuild {
-            ndkBuild {
-                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
-                arguments += listOf(
-
-                    "APP_PLATFORM=android-26",
-
-                    "APP_CFLAGS=-DPKGNAME=com/vauth/foxyvpn/vpn/tun -DCLSNAME=HevSocks5Tunnel",
-                )
-            }
-        }
     }
 
-    externalNativeBuild {
-        ndkBuild {
-            path = file("src/main/jni/Android.mk")
+    val debugKeystoreFile = file("${rootDir}/debug.keystore")
+    val debugKeystoreBase64File = file("${rootDir}/debug.keystore.base64")
+    if (!debugKeystoreFile.exists() && debugKeystoreBase64File.exists()) {
+        runCatching {
+            val bytes = Base64.getDecoder().decode(debugKeystoreBase64File.readText().trim())
+            debugKeystoreFile.writeBytes(bytes)
         }
     }
+    val hasDebugKeystore = debugKeystoreFile.exists()
 
     signingConfigs {
+        if (hasDebugKeystore) {
+            create("debugConfig") {
+                storeFile = debugKeystoreFile
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
         if (hasReleaseSigning) {
             create("release") {
                 storeFile = releaseKeystoreFile
@@ -81,6 +58,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (hasDebugKeystore) {
+                signingConfig = signingConfigs.getByName("debugConfig")
+            }
+        }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

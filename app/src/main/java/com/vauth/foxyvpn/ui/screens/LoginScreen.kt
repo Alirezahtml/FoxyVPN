@@ -1,22 +1,34 @@
 package com.vauth.foxyvpn.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Mail
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -29,14 +41,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vauth.foxyvpn.data.FxaAuthRepository
+import com.vauth.foxyvpn.ui.theme.NeumorphicButton
+import com.vauth.foxyvpn.ui.theme.NeumorphicCard
+import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
+import com.vauth.foxyvpn.ui.theme.neumorphicSunken
 import kotlinx.coroutines.launch
 
 @Composable
@@ -52,6 +71,7 @@ fun LoginScreen(
     var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val neu = currentNeumorphicColors
 
     BackHandler(enabled = awaitingTwoFactor) {
         authRepository.clearPendingSession()
@@ -95,137 +115,193 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(neu.background)
             .imePadding(),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
-                .widthIn(max = 520.dp)
+                .widthIn(max = 480.dp)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text("Sign in with Firefox", style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.padding(top = 8.dp))
-            Text(
-                "FoxyVPN runs on the free 50 GB of monthly VPN traffic Mozilla includes with a Firefox account. No subscription is required.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.padding(top = 24.dp))
-
-            if (!awaitingTwoFactor) {
-                OutlinedTextField(
-                    value = email,
-                    onValueChange = {
-                        email = it.replace(Regex("[\\p{Z}\\u200B-\\u200D\\uFEFF\\u00A0\\s]+"), "").lowercase()
-                    },
-                    label = { Text("Firefox account email") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next,
-                        autoCorrectEnabled = false,
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
+            // Neumorphic Logo Badge
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(neu.surfaceElevated),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Shield,
+                    contentDescription = null,
+                    tint = neu.accent,
+                    modifier = Modifier.size(44.dp),
                 )
-                Spacer(Modifier.padding(top = 12.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = {
-                        password = it.replace(Regex("[\\u200B-\\u200D\\uFEFF]"), "")
-                    },
-                    label = { Text("Password") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            doSubmitLogin()
-                        }
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.padding(top = 20.dp))
-                Button(
-                    onClick = {
-                        focusManager.clearFocus()
-                        doSubmitLogin()
-                    },
-                    enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    } else {
-                        Text("Continue")
-                    }
-                }
-            } else {
-                Text("Enter the confirmation code sent to your email", style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.padding(top = 12.dp))
-                OutlinedTextField(
-                    value = code,
-                    onValueChange = {
-                        code = it.replace(Regex("[\\p{Z}\\u200B-\\u200D\\uFEFF\\u00A0\\s]+"), "")
-                    },
-                    label = { Text("Confirmation code") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.NumberPassword,
-                        imeAction = ImeAction.Done,
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            focusManager.clearFocus()
-                            doSubmitTwoFactor()
-                        }
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.padding(top = 20.dp))
-                Button(
-                    onClick = {
-                        focusManager.clearFocus()
-                        doSubmitTwoFactor()
-                    },
-                    enabled = !isLoading && code.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    } else {
-                        Text("Verify")
-                    }
-                }
             }
 
-            errorMessage?.let {
-                Spacer(Modifier.padding(top = 12.dp))
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center,
+            Spacer(Modifier.height(20.dp))
+
+            Text(
+                "Sign in to FoxyVPN",
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = neu.textPrimary,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Connect with your Firefox account to utilize 50 GB of fast, encrypted monthly VPN traffic.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = neu.textSecondary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+
+            Spacer(Modifier.height(28.dp))
+
+            NeumorphicCard(
+                modifier = Modifier.fillMaxWidth(),
+                cornerRadius = 24.dp,
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                )
+                        .padding(20.dp),
+                ) {
+                    if (!awaitingTwoFactor) {
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = {
+                                email = it.replace(Regex("[\\p{Z}\\u200B-\\u200D\\uFEFF\\u00A0\\s]+"), "").lowercase()
+                            },
+                            label = { Text("Firefox Account Email") },
+                            leadingIcon = { Icon(Icons.Filled.Mail, contentDescription = null, tint = neu.textSecondary) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Next,
+                                autoCorrectEnabled = false,
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+
+                        Spacer(Modifier.height(14.dp))
+
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = {
+                                password = it.replace(Regex("[\\u200B-\\u200D\\uFEFF]"), "")
+                            },
+                            label = { Text("Password") },
+                            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = neu.textSecondary) },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done,
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
+                                    doSubmitLogin()
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+
+                        Spacer(Modifier.height(24.dp))
+
+                        NeumorphicButton(
+                            onClick = {
+                                focusManager.clearFocus()
+                                doSubmitLogin()
+                            },
+                            accentColor = neu.accent,
+                            enabled = !isLoading && email.isNotBlank() && password.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White,
+                                )
+                            } else {
+                                Text(
+                                    "Continue",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    } else {
+                        Text(
+                            "Enter the confirmation code sent to your email",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = neu.textPrimary,
+                        )
+                        Spacer(Modifier.height(14.dp))
+                        OutlinedTextField(
+                            value = code,
+                            onValueChange = {
+                                code = it.replace(Regex("[\\p{Z}\\u200B-\\u200D\\uFEFF\\u00A0\\s]+"), "")
+                            },
+                            label = { Text("6-Digit Code") },
+                            leadingIcon = { Icon(Icons.Filled.VpnKey, contentDescription = null, tint = neu.textSecondary) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.NumberPassword,
+                                imeAction = ImeAction.Done,
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    focusManager.clearFocus()
+                                    doSubmitTwoFactor()
+                                }
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+
+                        Spacer(Modifier.height(24.dp))
+
+                        NeumorphicButton(
+                            onClick = {
+                                focusManager.clearFocus()
+                                doSubmitTwoFactor()
+                            },
+                            accentColor = neu.accent,
+                            enabled = !isLoading && code.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White,
+                                )
+                            } else {
+                                Text(
+                                    "Verify & Sign In",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = Color.White,
+                                )
+                            }
+                        }
+                    }
+
+                    errorMessage?.let {
+                        Spacer(Modifier.height(14.dp))
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
         }
     }

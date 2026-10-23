@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -26,21 +27,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Power
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,12 +56,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vauth.foxyvpn.FoxyVpnApp
 import com.vauth.foxyvpn.data.GUARDIAN_ENDPOINT_DEFAULT
 import com.vauth.foxyvpn.data.RECOMMENDED_COUNTRY_CODE
@@ -66,9 +71,15 @@ import com.vauth.foxyvpn.data.ServerListClient
 import com.vauth.foxyvpn.data.formatBytes
 import com.vauth.foxyvpn.data.model.ConnectionState
 import com.vauth.foxyvpn.data.model.emojiFlag
+import com.vauth.foxyvpn.ui.components.DynamicIsland
 import com.vauth.foxyvpn.ui.theme.LocalFoxyStatusColors
+import com.vauth.foxyvpn.ui.theme.NeumorphicCard
+import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
+import com.vauth.foxyvpn.ui.theme.NeumorphicSlideToConnect
 import com.vauth.foxyvpn.ui.theme.ThemeController
 import com.vauth.foxyvpn.ui.theme.ThemeMode
+import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
+import com.vauth.foxyvpn.ui.theme.neumorphicSunken
 import com.vauth.foxyvpn.vpn.ExitCheck
 import com.vauth.foxyvpn.vpn.FoxyVpnService
 import com.vauth.foxyvpn.vpn.IpLocationInfo
@@ -78,7 +89,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     app: FoxyVpnApp,
@@ -97,20 +108,8 @@ fun HomeScreen(
 
     val selectedProxy by app.proxyStateStore.selectedProxyFlow.collectAsState()
 
+    val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
-    val targetRingColor = when (state) {
-        ConnectionState.CONNECTED -> statusColors.connected
-        ConnectionState.CONNECTING -> statusColors.connecting
-        ConnectionState.DISCONNECTED -> MaterialTheme.colorScheme.outline
-    }
-
-    val ringColor by animateColorAsState(targetValue = targetRingColor, label = "connect-ring-color")
-    val scale by animateFloatAsState(
-        targetValue = if (state == ConnectionState.CONNECTED) 1f else 0.92f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "connect-scale",
-    )
-
     val systemInDarkTheme = isSystemInDarkTheme()
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -179,25 +178,42 @@ fun HomeScreen(
     }
 
     Scaffold(
+        containerColor = neu.background,
         topBar = {
             TopAppBar(
-                title = { Text("FoxyVPN") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(neu.accent.copy(alpha = 0.18f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Shield,
+                                contentDescription = null,
+                                tint = neu.accent,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "FoxyVPN",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.3.sp,
+                            ),
+                            color = neu.textPrimary,
+                        )
+                    }
+                },
                 actions = {
                     val mode = themeController.mode
                     val showingDark = themeController.resolveDark(systemInDarkTheme)
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .combinedClickable(
-                                role = Role.Button,
-                                onClick = { themeController.toggle(systemInDarkTheme) },
-                                onLongClick = {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    themeController.set(ThemeMode.SYSTEM)
-                                },
-                            ),
-                        contentAlignment = Alignment.Center,
+                    NeumorphicIconButton(
+                        size = 40.dp,
+                        onClick = { themeController.toggle(systemInDarkTheme) },
                     ) {
                         Icon(
                             imageVector = when (mode) {
@@ -205,23 +221,28 @@ fun HomeScreen(
                                 ThemeMode.LIGHT -> Icons.Filled.LightMode
                                 ThemeMode.DARK -> Icons.Filled.DarkMode
                             },
-                            contentDescription = when (mode) {
-                                ThemeMode.SYSTEM ->
-                                    "Theme: follow system. Tap to switch to ${if (showingDark) "light" else "dark"} mode"
-                                ThemeMode.LIGHT -> "Theme: light. Tap for dark mode, long press to follow the system"
-                                ThemeMode.DARK -> "Theme: dark. Tap for light mode, long press to follow the system"
-                            },
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            contentDescription = "Toggle Theme",
+                            tint = neu.textPrimary,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
-                    IconButton(onClick = onOpenSettings) {
+                    Spacer(Modifier.width(10.dp))
+                    NeumorphicIconButton(
+                        size = 40.dp,
+                        onClick = onOpenSettings,
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Settings,
                             contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = neu.textPrimary,
+                            modifier = Modifier.size(20.dp),
                         )
                     }
+                    Spacer(Modifier.width(12.dp))
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = neu.background,
+                ),
             )
         },
     ) { padding ->
@@ -232,73 +253,73 @@ fun HomeScreen(
             contentAlignment = Alignment.TopCenter,
         ) {
             val scrollState = rememberScrollState()
-            val heroGap = 18.dp
-            val naturalContentHeight = 566.dp
-            val availableExtra = (maxHeight - naturalContentHeight).coerceAtLeast(0.dp)
-            val dynamicSpace = if (availableExtra > 0.dp) (availableExtra / 2) else 16.dp
 
             Column(
                 modifier = Modifier
                     .widthIn(max = 520.dp)
                     .fillMaxWidth()
-                    .verticalScroll(scrollState, enabled = scrollState.maxValue > 0)
-                    .padding(horizontal = 20.dp),
+                    .verticalScroll(scrollState)
+                    .padding(horizontal = 20.dp, vertical = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.height(dynamicSpace))
-
-                Box(
-                    modifier = Modifier
-                        .size(180.dp)
-                        .clip(CircleShape)
-                        .background(ringColor.copy(alpha = 0.15f))
-                        .clickable {
-                            if (state == ConnectionState.DISCONNECTED) onRequestConnect() else onDisconnect()
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size((140 * scale).dp)
-                            .clip(CircleShape)
-                            .background(ringColor.copy(alpha = 0.25f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Power,
-                            contentDescription = if (state == ConnectionState.DISCONNECTED) "Connect" else "Disconnect",
-                            tint = ringColor,
-                            modifier = Modifier.size(56.dp),
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(heroGap))
-
-                Text(
-                    text = when (state) {
-                        ConnectionState.CONNECTED -> "Connected"
-                        ConnectionState.CONNECTING -> "Connecting\u2026"
-                        ConnectionState.DISCONNECTED -> "Disconnected"
-                    },
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                // Dynamic Island header pill
+                DynamicIsland(
+                    settingsStore = app.settingsStore,
+                    selectedProxy = selectedProxy,
+                    onDisconnect = onDisconnect,
+                    onRequestConnect = onRequestConnect,
+                    onOpenServers = onOpenServers,
                 )
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(18.dp))
 
-                if (state == ConnectionState.CONNECTING) {
+                // Connection Status Hero
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                ) {
+                    val statusText = when (state) {
+                        ConnectionState.CONNECTED -> "SECURE & CONNECTED"
+                        ConnectionState.CONNECTING -> "ESTABLISHING TUNNEL\u2026"
+                        ConnectionState.DISCONNECTED -> "NOT PROTECTED"
+                    }
+                    val statusColor = when (state) {
+                        ConnectionState.CONNECTED -> statusColors.connected
+                        ConnectionState.CONNECTING -> statusColors.connecting
+                        ConnectionState.DISCONNECTED -> neu.textSecondary
+                    }
+
                     Text(
-                        "Tap to cancel",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = statusText,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                        ),
+                        color = statusColor,
                     )
-                } else {
+
+                    Spacer(Modifier.height(4.dp))
+
                     Text(
                         text = if (state == ConnectionState.CONNECTED) formatDuration(elapsedSeconds) else "00:00:00",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontFeatureSettings = "tnum",
+                        ),
+                        color = neu.textPrimary,
                     )
                 }
+
+                Spacer(Modifier.height(10.dp))
+
+                // SLIDE-TO-CONNECT PRIMARY CONTROLLER
+                NeumorphicSlideToConnect(
+                    state = state,
+                    lastError = lastError,
+                    onRequestConnect = onRequestConnect,
+                    onDisconnect = onDisconnect,
+                    modifier = Modifier.padding(vertical = 8.dp),
+                )
 
                 val error = lastError
                 if (error != null && state != ConnectionState.CONNECTING) {
@@ -314,103 +335,153 @@ fun HomeScreen(
                     )
                 }
 
-                Spacer(Modifier.height(heroGap))
+                Spacer(Modifier.height(20.dp))
 
-                Card(
+                // Location Card (Raised Neumorphic)
+                NeumorphicCard(
                     onClick = onOpenServers,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    cornerRadius = 20.dp,
                 ) {
-                    Column(Modifier.padding(16.dp)) {
-                        Text(
-                            "Location",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.padding(top = 4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            val flag = selectedProxy?.emojiFlag
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val flag = selectedProxy?.emojiFlag
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(neu.surfaceElevated),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             if (!flag.isNullOrBlank()) {
-                                Text(flag, style = MaterialTheme.typography.titleMedium)
+                                Text(flag, fontSize = 22.sp)
                             } else {
-                                Icon(imageVector = Icons.Filled.Public, contentDescription = null)
+                                Icon(
+                                    imageVector = Icons.Filled.Public,
+                                    contentDescription = null,
+                                    tint = neu.accent,
+                                    modifier = Modifier.size(24.dp),
+                                )
                             }
-                            Spacer(Modifier.padding(start = 8.dp))
+                        }
+
+                        Spacer(Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                selectedProxy?.let { it.countryName.ifBlank { it.countryCode } } ?: "Recommended",
-                                style = MaterialTheme.typography.bodyLarge,
+                                "SERVER LOCATION",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                ),
+                                color = neu.textSecondary,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                selectedProxy?.let { it.countryName.ifBlank { it.countryCode } } ?: "Recommended (Fastest)",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = neu.textPrimary,
+                            )
+                        }
+
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Change Server",
+                            tint = neu.textSecondary,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Current IP Card (Raised Neumorphic)
+                NeumorphicCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    cornerRadius = 20.dp,
+                ) {
+                    val isConnected = state == ConnectionState.CONNECTED
+                    val ipDisplay = if (isConnected) {
+                        vpnEdgeIp?.let {
+                            if (it.countryCode.isNotEmpty()) "${it.ip} • ${it.countryCode}" else it.ip
+                        } ?: "Verifying\u2026"
+                    } else {
+                        realIp?.let {
+                            if (it.countryCode.isNotEmpty()) "${it.ip} • ${it.countryCode}" else it.ip
+                        } ?: app.settingsStore.cachedRealIp?.let { cachedIp ->
+                            val cachedCountry = app.settingsStore.cachedRealCountry
+                            if (!cachedCountry.isNullOrEmpty()) "$cachedIp • $cachedCountry" else cachedIp
+                        } ?: "Checking\u2026"
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(if (isConnected) statusColors.connected.copy(alpha = 0.15f) else Color.Red.copy(alpha = 0.12f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = if (isConnected) Icons.Filled.Security else Icons.Filled.Shield,
+                                contentDescription = null,
+                                tint = if (isConnected) statusColors.connected else MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+
+                        Spacer(Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "CURRENT IP ADDRESS",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                ),
+                                color = neu.textSecondary,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                ipDisplay,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = neu.textPrimary,
+                            )
+                        }
+
+                        val badgeColor = if (isConnected) statusColors.connected else MaterialTheme.colorScheme.error
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(badgeColor.copy(alpha = 0.14f))
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                        ) {
+                            Text(
+                                if (isConnected) "Protected" else "Exposed",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                color = badgeColor,
                             )
                         }
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(14.dp))
 
-                Card(
+                // Telemetry & Quota Card (Raised Neumorphic)
+                NeumorphicCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    cornerRadius = 20.dp,
                 ) {
-                    Column(Modifier.padding(16.dp)) {
-                        val isConnected = state == ConnectionState.CONNECTED
-                        val ipDisplay = if (isConnected) {
-                            vpnEdgeIp?.let {
-                                if (it.countryCode.isNotEmpty()) "${it.ip} • ${it.countryCode}" else it.ip
-                            } ?: "Checking\u2026"
-                        } else {
-                            realIp?.let {
-                                if (it.countryCode.isNotEmpty()) "${it.ip} • ${it.countryCode}" else it.ip
-                            } ?: app.settingsStore.cachedRealIp?.let { cachedIp ->
-                                val cachedCountry = app.settingsStore.cachedRealCountry
-                                if (!cachedCountry.isNullOrEmpty()) "$cachedIp • $cachedCountry" else cachedIp
-                            } ?: "Checking\u2026"
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Current IP",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Spacer(Modifier.height(2.dp))
-                                Text(
-                                    ipDisplay,
-                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            val badgeColor = if (isConnected) statusColors.connected else MaterialTheme.colorScheme.error
-                            val badgeBg = badgeColor.copy(alpha = 0.15f)
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(badgeBg)
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                            ) {
-                                Text(
-                                    if (isConnected) "Protected" else "Exposed",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = badgeColor,
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(Modifier.height(12.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                ) {
-                    Column(Modifier.padding(16.dp)) {
+                    Column(Modifier.padding(18.dp)) {
                         val isConnected = state == ConnectionState.CONNECTED
                         val remaining = quotaRemaining
                         val max = quotaMax
@@ -419,23 +490,29 @@ fun HomeScreen(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
+                            // Data Used
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Data Used",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    "DATA USED",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp,
+                                    ),
+                                    color = neu.textSecondary,
                                 )
                                 Spacer(Modifier.height(2.dp))
                                 Text(
                                     if (isConnected) formatBytes(liveStats.sessionBytes) else "0.0 MB",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = neu.textPrimary,
                                 )
                             }
+
+                            // Latency / Ping
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(RoundedCornerShape(10.dp))
                                     .clickable(role = Role.Button) {
                                         if (!isPinging) {
                                             scope.launch {
@@ -460,49 +537,61 @@ fun HomeScreen(
                                         }
                                     },
                             ) {
-                                Text(
-                                    "Latency",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "LATENCY",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = 1.sp,
+                                        ),
+                                        color = neu.textSecondary,
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Icon(
+                                        imageVector = Icons.Filled.NetworkCheck,
+                                        contentDescription = "Test Ping",
+                                        tint = neu.textSecondary,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
                                 Spacer(Modifier.height(2.dp))
                                 val currentPing = if (isConnected) pingLatency else disconnectedPingLatency
                                 Text(
                                     text = when {
-                                        isPinging -> "Pinging\u2026"
+                                        isPinging -> "Testing\u2026"
                                         currentPing != null -> "$currentPing ms"
                                         else -> "\u2014 ms"
                                     },
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = if (currentPing != null) statusColors.connected else MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                    color = if (currentPing != null) statusColors.connected else neu.textPrimary,
                                 )
                             }
                         }
 
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(18.dp))
 
+                        // Quota Details & Sunken Progress Bar
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "Monthly Quota Remaining",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                "Monthly Quota",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = neu.textSecondary,
                                 modifier = Modifier.weight(1f),
                             )
-                            Spacer(Modifier.width(8.dp))
                             val quotaText = when {
                                 isUnlimited -> "Unlimited"
                                 remaining != null && max != null -> "${formatBytes(remaining)} / ${formatBytes(max)}"
                                 remaining != null -> formatBytes(remaining)
-                                max != null -> "Limited to ${formatBytes(max)}"
+                                max != null -> "Limit: ${formatBytes(max)}"
                                 else -> "\u2014"
                             }
                             Text(
                                 quotaText,
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = neu.textPrimary,
                             )
                         }
 
@@ -515,19 +604,34 @@ fun HomeScreen(
                             else -> 0f
                         }
 
-                        LinearProgressIndicator(
-                            progress = { quotaFraction },
+                        // Sunken Neumorphic Progress Track
+                        val progressShape = RoundedCornerShape(6.dp)
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(RoundedCornerShape(3.dp)),
-                            color = if (isConnected) statusColors.connected else MaterialTheme.colorScheme.outlineVariant,
-                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        )
+                                .height(10.dp)
+                                .neumorphicSunken(
+                                    shape = progressShape,
+                                    cornerRadius = 6.dp,
+                                    depth = 2.dp,
+                                    surfaceColor = neu.surfaceElevated,
+                                ),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(quotaFraction)
+                                    .fillMaxSize()
+                                    .clip(progressShape)
+                                    .background(
+                                        if (isConnected) statusColors.connected
+                                        else neu.accent.copy(alpha = 0.8f)
+                                    ),
+                            )
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(dynamicSpace))
+                Spacer(Modifier.height(28.dp))
             }
         }
     }

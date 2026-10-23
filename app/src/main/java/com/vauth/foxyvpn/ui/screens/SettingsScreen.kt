@@ -4,7 +4,12 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,11 +17,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,24 +33,28 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,17 +63,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vauth.foxyvpn.BuildConfig
 import com.vauth.foxyvpn.data.SettingsStore
+import com.vauth.foxyvpn.quicksettings.DynamicIslandOverlayService
+import com.vauth.foxyvpn.ui.theme.NeumorphicCard
+import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
+import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val GITHUB_URL = "https://github.com/vauth/foxyvpn"
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     settingsStore: SettingsStore,
@@ -69,6 +91,8 @@ fun SettingsScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val neu = currentNeumorphicColors
+
     var exitCheckEnabled by remember { mutableStateOf(settingsStore.exitCheckEnabled) }
     var dnsProvider by remember { mutableStateOf(settingsStore.dnsProvider) }
     var customDohUrl by remember { mutableStateOf(settingsStore.customDohUrl) }
@@ -88,6 +112,21 @@ fun SettingsScreen(
     var upstreamProxyPassword by remember { mutableStateOf(settingsStore.upstreamProxyPassword) }
     var excludedApps by remember { mutableStateOf(settingsStore.excludedApps) }
     var mtu by remember { mutableStateOf(settingsStore.mtu) }
+    var tlsSplitMode by remember { mutableStateOf(settingsStore.tlsSplitMode) }
+
+    // Dynamic Island State
+    var dynamicIslandEnabled by remember { mutableStateOf(settingsStore.dynamicIslandEnabled) }
+    var dynamicIslandOverlayEnabled by remember { mutableStateOf(settingsStore.dynamicIslandOverlayEnabled) }
+    var dynamicIslandSize by remember { mutableStateOf(settingsStore.dynamicIslandSize) }
+    var dynamicIslandPosition by remember { mutableStateOf(settingsStore.dynamicIslandPosition) }
+    var dynamicIslandTheme by remember { mutableStateOf(settingsStore.dynamicIslandTheme) }
+    var dynamicIslandShowSpeed by remember { mutableStateOf(settingsStore.dynamicIslandShowSpeed) }
+    var dynamicIslandShowPing by remember { mutableStateOf(settingsStore.dynamicIslandShowPing) }
+    var dynamicIslandShowFlag by remember { mutableStateOf(settingsStore.dynamicIslandShowFlag) }
+    var dynamicIslandShowTimer by remember { mutableStateOf(settingsStore.dynamicIslandShowTimer) }
+    var dynamicIslandAnimation by remember { mutableStateOf(settingsStore.dynamicIslandAnimation) }
+
+    // Dialog toggles
     var showDnsProviderDialog by remember { mutableStateOf(false) }
     var showBootstrapDnsDialog by remember { mutableStateOf(false) }
     var showMtuDialog by remember { mutableStateOf(false) }
@@ -99,8 +138,46 @@ fun SettingsScreen(
     var showUpstreamProxyAddressDialog by remember { mutableStateOf(false) }
     var showUpstreamProxyCredentialsDialog by remember { mutableStateOf(false) }
     var showSplitTunnelDialog by remember { mutableStateOf(false) }
-    var tlsSplitMode by remember { mutableStateOf(settingsStore.tlsSplitMode) }
     var showTlsSplitDialog by remember { mutableStateOf(false) }
+    var showIslandSizeDialog by remember { mutableStateOf(false) }
+    var showIslandPositionDialog by remember { mutableStateOf(false) }
+    var showIslandThemeDialog by remember { mutableStateOf(false) }
+
+    if (showIslandSizeDialog) {
+        DynamicIslandSizeDialog(
+            current = dynamicIslandSize,
+            onDismiss = { showIslandSizeDialog = false },
+            onConfirm = {
+                dynamicIslandSize = it
+                settingsStore.dynamicIslandSize = it
+                showIslandSizeDialog = false
+            },
+        )
+    }
+
+    if (showIslandPositionDialog) {
+        DynamicIslandPositionDialog(
+            current = dynamicIslandPosition,
+            onDismiss = { showIslandPositionDialog = false },
+            onConfirm = {
+                dynamicIslandPosition = it
+                settingsStore.dynamicIslandPosition = it
+                showIslandPositionDialog = false
+            },
+        )
+    }
+
+    if (showIslandThemeDialog) {
+        DynamicIslandThemeDialog(
+            current = dynamicIslandTheme,
+            onDismiss = { showIslandThemeDialog = false },
+            onConfirm = {
+                dynamicIslandTheme = it
+                settingsStore.dynamicIslandTheme = it
+                showIslandThemeDialog = false
+            },
+        )
+    }
 
     if (showMtuDialog) {
         MtuPickerDialog(
@@ -176,7 +253,7 @@ fun SettingsScreen(
         )
     }
     if (showEdgeAddressDialog) {
-        CustomEdgeAddressDialog(
+        EdgeAddressPickerDialog(
             current = customEdgeAddress,
             onDismiss = { showEdgeAddressDialog = false },
             onConfirm = {
@@ -187,7 +264,7 @@ fun SettingsScreen(
         )
     }
     if (showUpstreamProxyTypeDialog) {
-        UpstreamProxyTypePickerDialog(
+        UpstreamProxyTypeDialog(
             current = upstreamProxyType,
             onDismiss = { showUpstreamProxyTypeDialog = false },
             onConfirm = {
@@ -249,235 +326,600 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        containerColor = neu.background,
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = {
+                    Text(
+                        "Settings",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = neu.textPrimary,
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    NeumorphicIconButton(
+                        size = 38.dp,
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp),
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = neu.textPrimary,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = neu.background),
             )
         },
     ) { padding ->
         Column(
-            Modifier
+            modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            SectionLabel("Connection")
-            ListItem(
-                headlineContent = { Text("Verify exit location") },
-                supportingContent = { Text("Check that the tunnel exits in the selected country") },
-                trailingContent = {
-                    Switch(
-                        checked = exitCheckEnabled,
-                        onCheckedChange = {
-                            exitCheckEnabled = it
-                            settingsStore.exitCheckEnabled = it
-                        },
-                    )
-                },
-            )
-            ListItem(
-                headlineContent = { Text("Tunnel MTU") },
-                supportingContent = { Text(mtu.toString()) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showMtuDialog = true },
-            )
+            Box(modifier = Modifier.widthIn(max = 600.dp)) {
+                Column {
+                    // DYNAMIC ISLAND SECTION
+                    SectionHeading("DYNAMIC ISLAND (iOS STYLE)")
+                    NeumorphicCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            SettingToggleRow(
+                                title = "Enable Dynamic Island",
+                                subtitle = "Shows an interactive morphing status island at top",
+                                checked = dynamicIslandEnabled,
+                                onCheckedChange = {
+                                    dynamicIslandEnabled = it
+                                    settingsStore.dynamicIslandEnabled = it
+                                },
+                            )
 
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            SectionLabel("DNS")
-            ListItem(
-                headlineContent = { Text("Tunnel DNS") },
-                supportingContent = {
-                    val subtitle = when (dnsProvider) {
-                        SettingsStore.DnsProvider.SYSTEM_DEFAULT -> "Default"
-                        SettingsStore.DnsProvider.CUSTOM -> customDohUrl.ifBlank { "Custom DoH (Not configured)" }
-                        else -> dnsProvider.label
+                            if (dynamicIslandEnabled) {
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                val hasOverlayPermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)
+                                SettingToggleRow(
+                                    title = "Display Over Other Apps (Overlay)",
+                                    subtitle = if (hasOverlayPermission) "Floating pill visible when switching to other apps"
+                                    else "Requires Android 'Display over other apps' permission. Tap to grant.",
+                                    checked = dynamicIslandOverlayEnabled && hasOverlayPermission,
+                                    onCheckedChange = { enable ->
+                                        if (enable) {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(context)) {
+                                                val intent = Intent(
+                                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                    Uri.parse("package:${context.packageName}"),
+                                                )
+                                                context.startActivity(intent)
+                                            } else {
+                                                dynamicIslandOverlayEnabled = true
+                                                settingsStore.dynamicIslandOverlayEnabled = true
+                                                DynamicIslandOverlayService.start(context)
+                                            }
+                                        } else {
+                                            dynamicIslandOverlayEnabled = false
+                                            settingsStore.dynamicIslandOverlayEnabled = false
+                                            DynamicIslandOverlayService.stop(context)
+                                        }
+                                    },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingClickableRow(
+                                    title = "Island Size",
+                                    value = dynamicIslandSize.label,
+                                    onClick = { showIslandSizeDialog = true },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingClickableRow(
+                                    title = "Alignment & Position",
+                                    value = dynamicIslandPosition.label,
+                                    onClick = { showIslandPositionDialog = true },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingClickableRow(
+                                    title = "Visual Theme",
+                                    value = dynamicIslandTheme.label,
+                                    onClick = { showIslandThemeDialog = true },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingToggleRow(
+                                    title = "Show Live Transfer Speed",
+                                    subtitle = "Displays current upload and download rates",
+                                    checked = dynamicIslandShowSpeed,
+                                    onCheckedChange = {
+                                        dynamicIslandShowSpeed = it
+                                        settingsStore.dynamicIslandShowSpeed = it
+                                    },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingToggleRow(
+                                    title = "Show Ping Latency",
+                                    subtitle = "Displays measured latency to server",
+                                    checked = dynamicIslandShowPing,
+                                    onCheckedChange = {
+                                        dynamicIslandShowPing = it
+                                        settingsStore.dynamicIslandShowPing = it
+                                    },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingToggleRow(
+                                    title = "Show Country Flag",
+                                    subtitle = "Displays emoji flag of the active location",
+                                    checked = dynamicIslandShowFlag,
+                                    onCheckedChange = {
+                                        dynamicIslandShowFlag = it
+                                        settingsStore.dynamicIslandShowFlag = it
+                                    },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingToggleRow(
+                                    title = "Show Elapsed Timer",
+                                    subtitle = "Displays connection duration on pill",
+                                    checked = dynamicIslandShowTimer,
+                                    onCheckedChange = {
+                                        dynamicIslandShowTimer = it
+                                        settingsStore.dynamicIslandShowTimer = it
+                                    },
+                                )
+
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+
+                                SettingToggleRow(
+                                    title = "Glow & Pulse Animations",
+                                    subtitle = "Soft breathing aura while connected or dialing",
+                                    checked = dynamicIslandAnimation,
+                                    onCheckedChange = {
+                                        dynamicIslandAnimation = it
+                                        settingsStore.dynamicIslandAnimation = it
+                                    },
+                                )
+                            }
+                        }
                     }
-                    Text(subtitle)
-                },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showDnsProviderDialog = true },
-            )
-            ListItem(
-                headlineContent = { Text("Resolver DNS") },
-                supportingContent = {
-                    val subtitle = when (bootstrapDnsProvider) {
-                        SettingsStore.BootstrapDnsProvider.CUSTOM -> customBootstrapIp.ifBlank { "Custom IP (Not configured)" }
-                        SettingsStore.BootstrapDnsProvider.SYSTEM -> "System DNS"
-                        else -> bootstrapDnsProvider.label
+
+                    Spacer(Modifier.height(18.dp))
+
+                    // CONNECTION
+                    SectionHeading("CONNECTION")
+                    NeumorphicCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            SettingToggleRow(
+                                title = "Verify exit location",
+                                subtitle = "Check that tunnel exits in selected country",
+                                checked = exitCheckEnabled,
+                                onCheckedChange = {
+                                    exitCheckEnabled = it
+                                    settingsStore.exitCheckEnabled = it
+                                },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "Tunnel MTU",
+                                value = mtu.toString(),
+                                onClick = { showMtuDialog = true },
+                            )
+                        }
                     }
-                    Text(subtitle)
-                },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showBootstrapDnsDialog = true },
-            )
 
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            SectionLabel("Local proxy")
-            ListItem(
-                headlineContent = { Text("Proxy-only mode") },
-                supportingContent = { Text("Run local proxy servers (SOCKS5 & HTTP), without a VPN interface") },
-                trailingContent = {
-                    Switch(
-                        checked = proxyOnlyMode,
-                        onCheckedChange = {
-                            proxyOnlyMode = it
-                            settingsStore.proxyOnlyMode = it
-                        },
-                    )
-                },
-            )
-            ListItem(
-                headlineContent = { Text("Local address") },
-                supportingContent = { Text(socksBindAddress) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showSocksBindDialog = true },
-            )
-            ListItem(
-                headlineContent = { Text("SOCKS5 port") },
-                supportingContent = { Text(socksPort.toString()) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showSocksPortDialog = true },
-            )
-            ListItem(
-                headlineContent = { Text("Enable HTTP proxy") },
-                supportingContent = { Text("Run local HTTP proxy alongside SOCKS5") },
-                trailingContent = {
-                    Switch(
-                        checked = httpProxyEnabled,
-                        onCheckedChange = {
-                            httpProxyEnabled = it
-                            settingsStore.httpProxyEnabled = it
-                        },
-                    )
-                },
-            )
-            if (httpProxyEnabled) {
-                ListItem(
-                    headlineContent = { Text("HTTP port") },
-                    supportingContent = { Text(httpProxyPort.toString()) },
-                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                    modifier = Modifier.clickable { showHttpPortDialog = true },
-                )
-            }
+                    Spacer(Modifier.height(18.dp))
 
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            SectionLabel("Split tunneling")
-            ListItem(
-                headlineContent = { Text("Excluded apps") },
-                supportingContent = {
-                    Text(
-                        if (excludedApps.isEmpty()) {
-                            "None"
-                        } else {
-                            "${excludedApps.size} app(s) bypass the VPN"
-                        },
-                    )
-                },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showSplitTunnelDialog = true },
-            )
+                    // DNS
+                    SectionHeading("DNS")
+                    NeumorphicCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            SettingClickableRow(
+                                title = "Tunnel DNS",
+                                value = when (dnsProvider) {
+                                    SettingsStore.DnsProvider.SYSTEM_DEFAULT -> "Default"
+                                    SettingsStore.DnsProvider.CUSTOM -> customDohUrl.ifBlank { "Custom DoH" }
+                                    else -> dnsProvider.label
+                                },
+                                onClick = { showDnsProviderDialog = true },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "Resolver DNS",
+                                value = when (bootstrapDnsProvider) {
+                                    SettingsStore.BootstrapDnsProvider.CUSTOM -> customBootstrapIp.ifBlank { "Custom IP" }
+                                    SettingsStore.BootstrapDnsProvider.SYSTEM -> "System DNS"
+                                    else -> bootstrapDnsProvider.label
+                                },
+                                onClick = { showBootstrapDnsDialog = true },
+                            )
+                        }
+                    }
 
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            SectionLabel("Advanced")
-            ListItem(
-                headlineContent = { Text("Custom edge address") },
-                supportingContent = { Text(customEdgeAddress.ifBlank { "Not set" }) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showEdgeAddressDialog = true },
-            )
-            ListItem(
-                headlineContent = { Text("TLS fragmentation") },
-                supportingContent = { Text(tlsSplitMode.label) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable { showTlsSplitDialog = true },
-            )
-            ListItem(
-                headlineContent = { Text("Chain through upstream proxy") },
-                supportingContent = { Text("Connect to the VPN server through another proxy first") },
-                trailingContent = {
-                    Switch(
-                        checked = upstreamProxyEnabled,
-                        onCheckedChange = {
-                            upstreamProxyEnabled = it
-                            settingsStore.upstreamProxyEnabled = it
-                        },
-                    )
-                },
-            )
-            if (upstreamProxyEnabled) {
-                ListItem(
-                    headlineContent = { Text("Proxy type") },
-                    supportingContent = { Text(upstreamProxyType.name) },
-                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                    modifier = Modifier.clickable { showUpstreamProxyTypeDialog = true },
-                )
-                ListItem(
-                    headlineContent = { Text("Proxy address") },
-                    supportingContent = {
-                        Text(
-                            if (upstreamProxyHost.isBlank()) {
-                                "Not set"
-                            } else {
-                                "$upstreamProxyHost:$upstreamProxyPort"
-                            },
-                        )
-                    },
-                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                    modifier = Modifier.clickable { showUpstreamProxyAddressDialog = true },
-                )
-                ListItem(
-                    headlineContent = { Text("Proxy credentials") },
-                    supportingContent = {
-                        Text(if (upstreamProxyUsername.isBlank()) "None" else upstreamProxyUsername)
-                    },
-                    trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                    modifier = Modifier.clickable { showUpstreamProxyCredentialsDialog = true },
-                )
-            }
+                    Spacer(Modifier.height(18.dp))
 
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            SectionLabel("About")
-            ListItem(
-                headlineContent = { Text("View logs") },
-                supportingContent = { Text("Recent connection activity") },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
-                modifier = Modifier.clickable(onClick = onOpenLogs),
-            )
-            ListItem(
-                headlineContent = { Text("Version") },
-                supportingContent = { Text(BuildConfig.VERSION_NAME) },
-            )
-            ListItem(
-                headlineContent = { Text("Source code") },
-                supportingContent = { Text(GITHUB_URL) },
-                leadingContent = { Icon(Icons.Filled.Code, contentDescription = null) },
-                modifier = Modifier.clickable {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)))
-                },
-            )
+                    // LOCAL PROXY
+                    SectionHeading("LOCAL PROXY")
+                    NeumorphicCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            SettingToggleRow(
+                                title = "Proxy-only mode",
+                                subtitle = "Run local proxy servers without a VPN interface",
+                                checked = proxyOnlyMode,
+                                onCheckedChange = {
+                                    proxyOnlyMode = it
+                                    settingsStore.proxyOnlyMode = it
+                                },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "Local address",
+                                value = socksBindAddress,
+                                onClick = { showSocksBindDialog = true },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "SOCKS5 port",
+                                value = socksPort.toString(),
+                                onClick = { showSocksPortDialog = true },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingToggleRow(
+                                title = "Enable HTTP proxy",
+                                subtitle = "Run local HTTP proxy alongside SOCKS5",
+                                checked = httpProxyEnabled,
+                                onCheckedChange = {
+                                    httpProxyEnabled = it
+                                    settingsStore.httpProxyEnabled = it
+                                },
+                            )
+                            if (httpProxyEnabled) {
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                                SettingClickableRow(
+                                    title = "HTTP port",
+                                    value = httpProxyPort.toString(),
+                                    onClick = { showHttpPortDialog = true },
+                                )
+                            }
+                        }
+                    }
 
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            Button(
-                onClick = onSignOut,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Sign out")
+                    Spacer(Modifier.height(18.dp))
+
+                    // SPLIT TUNNELING
+                    SectionHeading("SPLIT TUNNELING")
+                    NeumorphicCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            SettingClickableRow(
+                                title = "Excluded apps",
+                                value = if (excludedApps.isEmpty()) "None" else "${excludedApps.size} app(s) bypass VPN",
+                                onClick = { showSplitTunnelDialog = true },
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
+                    // ADVANCED
+                    SectionHeading("ADVANCED NETWORKING")
+                    NeumorphicCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            SettingClickableRow(
+                                title = "Custom edge address",
+                                value = customEdgeAddress.ifBlank { "Not set" },
+                                onClick = { showEdgeAddressDialog = true },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "TLS fragmentation",
+                                value = tlsSplitMode.label,
+                                onClick = { showTlsSplitDialog = true },
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingToggleRow(
+                                title = "Chain through upstream proxy",
+                                subtitle = "Connect to VPN server through another proxy first",
+                                checked = upstreamProxyEnabled,
+                                onCheckedChange = {
+                                    upstreamProxyEnabled = it
+                                    settingsStore.upstreamProxyEnabled = it
+                                },
+                            )
+                            if (upstreamProxyEnabled) {
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                                SettingClickableRow(
+                                    title = "Proxy type",
+                                    value = upstreamProxyType.name,
+                                    onClick = { showUpstreamProxyTypeDialog = true },
+                                )
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                                SettingClickableRow(
+                                    title = "Proxy address",
+                                    value = if (upstreamProxyHost.isBlank()) "Not set" else "$upstreamProxyHost:$upstreamProxyPort",
+                                    onClick = { showUpstreamProxyAddressDialog = true },
+                                )
+                                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                                SettingClickableRow(
+                                    title = "Proxy credentials",
+                                    value = if (upstreamProxyUsername.isBlank()) "None" else upstreamProxyUsername,
+                                    onClick = { showUpstreamProxyCredentialsDialog = true },
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
+                    // ABOUT & ACTIONS
+                    SectionHeading("ABOUT & LOGS")
+                    NeumorphicCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp)) {
+                            SettingClickableRow(
+                                title = "View connection logs",
+                                value = "Live diagnostics and trace",
+                                onClick = onOpenLogs,
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "Version",
+                                value = BuildConfig.VERSION_NAME,
+                                onClick = {},
+                            )
+                            HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 8.dp))
+                            SettingClickableRow(
+                                title = "GitHub Repository",
+                                value = GITHUB_URL,
+                                onClick = {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)))
+                                },
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Sign Out Button
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.error.copy(alpha = 0.12f))
+                            .clickable(onClick = onSignOut)
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Logout,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Sign Out",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+                }
             }
         }
     }
+}
+
+@Composable
+private fun SectionHeading(text: String) {
+    val neu = currentNeumorphicColors
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+        ),
+        color = neu.textSecondary,
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp, top = 4.dp),
+    )
+}
+
+@Composable
+private fun SettingToggleRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val neu = currentNeumorphicColors
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = neu.textPrimary,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = neu.textSecondary,
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Color.White,
+                checkedTrackColor = neu.accent,
+                uncheckedThumbColor = neu.textSecondary,
+                uncheckedTrackColor = neu.surfaceElevated,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun SettingClickableRow(
+    title: String,
+    value: String,
+    onClick: () -> Unit,
+) {
+    val neu = currentNeumorphicColors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = neu.textPrimary,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                value,
+                style = MaterialTheme.typography.bodySmall,
+                color = neu.textSecondary,
+            )
+        }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = neu.textSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+// Dialogs
+@Composable
+private fun DynamicIslandSizeDialog(
+    current: SettingsStore.DynamicIslandSize,
+    onDismiss: () -> Unit,
+    onConfirm: (SettingsStore.DynamicIslandSize) -> Unit,
+) {
+    var selected by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Dynamic Island Size") },
+        text = {
+            Column {
+                SettingsStore.DynamicIslandSize.entries.forEach { size ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(selected == size, onClick = { selected = size })
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected == size, onClick = { selected = size })
+                        Spacer(Modifier.width(10.dp))
+                        Text(size.label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun DynamicIslandPositionDialog(
+    current: SettingsStore.DynamicIslandPosition,
+    onDismiss: () -> Unit,
+    onConfirm: (SettingsStore.DynamicIslandPosition) -> Unit,
+) {
+    var selected by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Dynamic Island Position") },
+        text = {
+            Column {
+                SettingsStore.DynamicIslandPosition.entries.forEach { pos ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(selected == pos, onClick = { selected = pos })
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected == pos, onClick = { selected = pos })
+                        Spacer(Modifier.width(10.dp))
+                        Text(pos.label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun DynamicIslandThemeDialog(
+    current: SettingsStore.DynamicIslandTheme,
+    onDismiss: () -> Unit,
+    onConfirm: (SettingsStore.DynamicIslandTheme) -> Unit,
+) {
+    var selected by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Dynamic Island Theme") },
+        text = {
+            Column {
+                SettingsStore.DynamicIslandTheme.entries.forEach { theme ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(selected == theme, onClick = { selected = theme })
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected == theme, onClick = { selected = theme })
+                        Spacer(Modifier.width(10.dp))
+                        Text(theme.label, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 @Composable
@@ -618,11 +1060,11 @@ private fun BootstrapDnsPickerDialog(
                     OutlinedTextField(
                         value = ipText,
                         onValueChange = { ipText = it.trim() },
-                        label = { Text("Resolver IP address") },
-                        placeholder = { Text("e.g. 76.76.2.2") },
+                        label = { Text("Resolver IP Address") },
+                        placeholder = { Text("e.g. 1.1.1.1") },
                         singleLine = true,
                         isError = ipText.isNotBlank() && !isValidCustomIp,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 8.dp),
@@ -632,50 +1074,11 @@ private fun BootstrapDnsPickerDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(selectedProvider, ipText.trim()) },
+                onClick = { onConfirm(selectedProvider, ipText) },
                 enabled = canSave,
             ) {
                 Text("Save")
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
-@Composable
-private fun CustomEdgeAddressDialog(
-    current: String,
-    onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
-) {
-    var value by remember { mutableStateOf(current) }
-    val trimmed = value.trim()
-    val isValid = trimmed.isEmpty() || SettingsStore.isValidEdgeHost(trimmed)
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Custom edge address") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = value,
-                    onValueChange = { value = it },
-                    label = { Text("Host or IP") },
-                    singleLine = true,
-                    isError = !isValid,
-                )
-                Text(
-                    "Leave empty to resolve the server hostname normally.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(trimmed) }, enabled = isValid) { Text("Save") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -690,10 +1093,9 @@ private fun SocksBindAddressPickerDialog(
     onConfirm: (String) -> Unit,
 ) {
     var selected by remember { mutableStateOf(current) }
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Local address") },
+        title = { Text("SOCKS5 Bind Address") },
         text = {
             Column {
                 SettingsStore.SOCKS_BIND_ADDRESS_PRESETS.forEach { (address, label) ->
@@ -701,10 +1103,16 @@ private fun SocksBindAddressPickerDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .selectable(selected = selected == address, onClick = { selected = address })
+                            .selectable(
+                                selected = selected == address,
+                                onClick = { selected = address },
+                            )
                             .padding(vertical = 4.dp),
                     ) {
-                        RadioButton(selected = selected == address, onClick = { selected = address })
+                        RadioButton(
+                            selected = selected == address,
+                            onClick = { selected = address },
+                        )
                         Text(label, modifier = Modifier.padding(start = 8.dp))
                     }
                 }
@@ -725,25 +1133,34 @@ private fun SocksPortPickerDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
-    var portText by remember { mutableStateOf(current.toString()) }
-    val parsedPort = portText.toIntOrNull()
-    val isValid = parsedPort != null && parsedPort in 1..65_535
+    var text by remember { mutableStateOf(current.toString()) }
+    val port = text.toIntOrNull()
+    val isValid = port != null && port in 1..65_535
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Local port") },
+        title = { Text("SOCKS5 Port") },
         text = {
-            OutlinedTextField(
-                value = portText,
-                onValueChange = { portText = it.filter(Char::isDigit).take(5) },
-                label = { Text("Port (1\u201365535)") },
-                singleLine = true,
-                isError = portText.isNotBlank() && !isValid,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it.filter(Char::isDigit).take(5) },
+                    label = { Text("Port (1\u201365535)") },
+                    singleLine = true,
+                    isError = text.isNotBlank() && !isValid,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(
+                    onClick = { text = SettingsStore.DEFAULT_SOCKS_PORT.toString() },
+                    modifier = Modifier.align(Alignment.End),
+                ) {
+                    Text("Reset to default (${SettingsStore.DEFAULT_SOCKS_PORT})")
+                }
+            }
         },
         confirmButton = {
-            TextButton(onClick = { parsedPort?.let { onConfirm(it) } }, enabled = isValid) { Text("Save") }
+            TextButton(onClick = { port?.let { onConfirm(it) } }, enabled = isValid) { Text("Save") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -757,25 +1174,34 @@ private fun HttpPortPickerDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit,
 ) {
-    var portText by remember { mutableStateOf(current.toString()) }
-    val parsedPort = portText.toIntOrNull()
-    val isValid = parsedPort != null && parsedPort in 1..65_535
+    var text by remember { mutableStateOf(current.toString()) }
+    val port = text.toIntOrNull()
+    val isValid = port != null && port in 1..65_535
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("HTTP port") },
+        title = { Text("HTTP Proxy Port") },
         text = {
-            OutlinedTextField(
-                value = portText,
-                onValueChange = { portText = it.filter(Char::isDigit).take(5) },
-                label = { Text("Port (1\u201365535)") },
-                singleLine = true,
-                isError = portText.isNotBlank() && !isValid,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it.filter(Char::isDigit).take(5) },
+                    label = { Text("Port (1\u201365535)") },
+                    singleLine = true,
+                    isError = text.isNotBlank() && !isValid,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextButton(
+                    onClick = { text = SettingsStore.DEFAULT_HTTP_PROXY_PORT.toString() },
+                    modifier = Modifier.align(Alignment.End),
+                ) {
+                    Text("Reset to default (${SettingsStore.DEFAULT_HTTP_PROXY_PORT})")
+                }
+            }
         },
         confirmButton = {
-            TextButton(onClick = { parsedPort?.let { onConfirm(it) } }, enabled = isValid) { Text("Save") }
+            TextButton(onClick = { port?.let { onConfirm(it) } }, enabled = isValid) { Text("Save") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -784,7 +1210,48 @@ private fun HttpPortPickerDialog(
 }
 
 @Composable
-private fun UpstreamProxyTypePickerDialog(
+private fun EdgeAddressPickerDialog(
+    current: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var text by remember { mutableStateOf(current) }
+    val trimmed = text.trim()
+    val isValid = trimmed.isEmpty() || SettingsStore.isValidEdgeHost(trimmed)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Custom Edge Address") },
+        text = {
+            Column {
+                Text(
+                    "Override the DNS resolution of the VPN server with a specific hostname or IP address.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it.trim() },
+                    label = { Text("IP or Hostname") },
+                    placeholder = { Text("Leave empty for default") },
+                    singleLine = true,
+                    isError = text.isNotBlank() && !isValid,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(trimmed) }, enabled = isValid) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun UpstreamProxyTypeDialog(
     current: SettingsStore.UpstreamProxyType,
     onDismiss: () -> Unit,
     onConfirm: (SettingsStore.UpstreamProxyType) -> Unit,
@@ -792,7 +1259,7 @@ private fun UpstreamProxyTypePickerDialog(
     var selected by remember { mutableStateOf(current) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Proxy type") },
+        title = { Text("Upstream Proxy Type") },
         text = {
             Column {
                 SettingsStore.UpstreamProxyType.entries.forEach { type ->
@@ -800,59 +1267,14 @@ private fun UpstreamProxyTypePickerDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .selectable(selected = selected == type, onClick = { selected = type })
+                            .selectable(
+                                selected = selected == type,
+                                onClick = { selected = type },
+                            )
                             .padding(vertical = 4.dp),
                     ) {
                         RadioButton(selected = selected == type, onClick = { selected = type })
                         Text(type.name, modifier = Modifier.padding(start = 8.dp))
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        },
-    )
-}
-
-@Composable
-private fun TlsSplitModePickerDialog(
-    current: SettingsStore.TlsSplitMode,
-    onDismiss: () -> Unit,
-    onConfirm: (SettingsStore.TlsSplitMode) -> Unit,
-) {
-    var selected by remember { mutableStateOf(current) }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("TLS fragmentation") },
-        text = {
-            Column {
-                Text(
-                    "Fragments the TLS ClientHello into multiple TCP packets to bypass SNI-based filtering on censored networks.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-                SettingsStore.TlsSplitMode.entries.forEach { mode ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .selectable(selected = selected == mode, onClick = { selected = mode })
-                            .padding(vertical = 6.dp),
-                    ) {
-                        RadioButton(selected = selected == mode, onClick = { selected = mode })
-                        Column(Modifier.padding(start = 8.dp)) {
-                            Text(mode.label, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                mode.description,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
                     }
                 }
             }
@@ -873,35 +1295,45 @@ private fun UpstreamProxyAddressDialog(
     onDismiss: () -> Unit,
     onConfirm: (String, Int) -> Unit,
 ) {
-    var host by remember { mutableStateOf(currentHost) }
+    var hostText by remember { mutableStateOf(currentHost) }
     var portText by remember { mutableStateOf(currentPort.toString()) }
-    val parsedPort = portText.toIntOrNull()
-    val isValid = host.isNotBlank() && parsedPort != null && parsedPort in 1..65_535
+    val port = portText.toIntOrNull()
+    val isValidHost = hostText.isBlank() || SettingsStore.isValidEdgeHost(hostText)
+    val isValidPort = port != null && port in 1..65_535
+    val canSave = isValidHost && isValidPort
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Proxy address") },
+        title = { Text("Upstream Proxy Address") },
         text = {
             Column {
                 OutlinedTextField(
-                    value = host,
-                    onValueChange = { host = it.trim() },
-                    label = { Text("Host or IP") },
+                    value = hostText,
+                    onValueChange = { hostText = it.trim() },
+                    label = { Text("Host / IP") },
                     singleLine = true,
+                    isError = hostText.isNotBlank() && !isValidHost,
+                    modifier = Modifier.fillMaxWidth(),
                 )
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = portText,
                     onValueChange = { portText = it.filter(Char::isDigit).take(5) },
                     label = { Text("Port (1\u201365535)") },
                     singleLine = true,
-                    isError = portText.isNotBlank() && (parsedPort == null || parsedPort !in 1..65_535),
+                    isError = portText.isNotBlank() && !isValidPort,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { parsedPort?.let { onConfirm(host, it) } }, enabled = isValid) { Text("Save") }
+            TextButton(
+                onClick = { port?.let { onConfirm(hostText, it) } },
+                enabled = canSave,
+            ) {
+                Text("Save")
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
@@ -918,24 +1350,33 @@ private fun UpstreamProxyCredentialsDialog(
 ) {
     var username by remember { mutableStateOf(currentUsername) }
     var password by remember { mutableStateOf(currentPassword) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Proxy credentials") },
+        title = { Text("Proxy Authentication") },
         text = {
             Column {
+                Text(
+                    "Optional username and password if your proxy requires authentication.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
                 OutlinedTextField(
                     value = username,
                     onValueChange = { username = it },
-                    label = { Text("Username (optional)") },
+                    label = { Text("Username") },
                     singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
                 )
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password (optional)") },
+                    label = { Text("Password") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         },
@@ -948,97 +1389,37 @@ private fun UpstreamProxyCredentialsDialog(
     )
 }
 
-private data class InstalledAppEntry(val packageName: String, val label: String)
-
 @Composable
-private fun SplitTunnelDialog(
-    current: Set<String>,
+private fun TlsSplitModePickerDialog(
+    current: SettingsStore.TlsSplitMode,
     onDismiss: () -> Unit,
-    onConfirm: (Set<String>) -> Unit,
+    onConfirm: (SettingsStore.TlsSplitMode) -> Unit,
 ) {
-    val context = LocalContext.current
     var selected by remember { mutableStateOf(current) }
-    var searchQuery by remember { mutableStateOf("") }
-
-    val installedApps by produceState<List<InstalledAppEntry>>(initialValue = emptyList()) {
-        value = withContext(Dispatchers.IO) {
-            val packageManager = context.packageManager
-            packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-                .asSequence()
-                .filter { it.packageName != context.packageName }
-                .filter { packageManager.getLaunchIntentForPackage(it.packageName) != null }
-                .map { info: ApplicationInfo ->
-                    InstalledAppEntry(info.packageName, info.loadLabel(packageManager).toString())
-                }
-                .sortedBy { it.label.lowercase() }
-                .toList()
-        }
-    }
-    val filteredApps = remember(installedApps, searchQuery) {
-        if (searchQuery.isBlank()) {
-            installedApps
-        } else {
-            installedApps.filter { it.label.contains(searchQuery, ignoreCase = true) }
-        }
-    }
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Split tunneling") },
+        title = { Text("TLS Fragmentation") },
         text = {
             Column {
-                Text(
-                    "Selected apps bypass the VPN and use your normal connection.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
-                )
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    label = { Text("Search apps") },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                )
-                if (installedApps.isEmpty()) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(24.dp).align(Alignment.CenterHorizontally)
-                    )
-                } else if (filteredApps.isEmpty()) {
-                    Text(
-                        "No apps match \"$searchQuery\".",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 12.dp),
-                    )
-                } else {
-                    LazyColumn(modifier = Modifier.height(360.dp)) {
-                        items(filteredApps, key = { it.packageName }) { app ->
-                            val isChecked = selected.contains(app.packageName)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selected = if (isChecked) {
-                                            selected - app.packageName
-                                        } else {
-                                            selected + app.packageName
-                                        }
-                                    }
-                                    .padding(vertical = 2.dp),
-                            ) {
-                                Checkbox(
-                                    checked = isChecked,
-                                    onCheckedChange = {
-                                        selected = if (it) selected + app.packageName else selected - app.packageName
-                                    },
-                                )
-                                Text(app.label, modifier = Modifier.padding(start = 8.dp))
-                            }
+                SettingsStore.TlsSplitMode.entries.forEach { mode ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = selected == mode,
+                                onClick = { selected = mode },
+                            )
+                            .padding(vertical = 4.dp),
+                    ) {
+                        RadioButton(selected = selected == mode, onClick = { selected = mode })
+                        Column(Modifier.padding(start = 8.dp)) {
+                            Text(mode.label)
+                            Text(
+                                mode.description,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
                         }
                     }
                 }
@@ -1053,13 +1434,101 @@ private fun SplitTunnelDialog(
     )
 }
 
+private data class AppItem(
+    val packageName: String,
+    val label: String,
+)
+
 @Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+private fun SplitTunnelDialog(
+    current: Set<String>,
+    onDismiss: () -> Unit,
+    onConfirm: (Set<String>) -> Unit,
+) {
+    val context = LocalContext.current
+    var selected by remember { mutableStateOf(current) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val installedApps by produceState<List<AppItem>>(initialValue = emptyList()) {
+        value = withContext(Dispatchers.IO) {
+            val pm = context.packageManager
+            val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
+            packages
+                .filter { it.flags and ApplicationInfo.FLAG_SYSTEM == 0 || it.packageName == "com.android.chrome" }
+                .map { AppItem(it.packageName, pm.getApplicationLabel(it).toString()) }
+                .sortedBy { it.label.lowercase() }
+        }
+    }
+
+    val filteredApps = remember(installedApps, searchQuery) {
+        if (searchQuery.isBlank()) installedApps
+        else installedApps.filter {
+            it.label.contains(searchQuery, ignoreCase = true) ||
+                it.packageName.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Bypass VPN (Excluded Apps)") },
+        text = {
+            Column(Modifier.height(400.dp)) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Search apps") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                )
+                if (installedApps.isEmpty()) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    LazyColumn(Modifier.weight(1f)) {
+                        items(filteredApps, key = { it.packageName }) { app ->
+                            val isChecked = selected.contains(app.packageName)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selected = if (isChecked) selected - app.packageName
+                                        else selected + app.packageName
+                                    }
+                                    .padding(vertical = 4.dp),
+                            ) {
+                                Checkbox(
+                                    checked = isChecked,
+                                    onCheckedChange = { check ->
+                                        selected = if (check) selected + app.packageName
+                                        else selected - app.packageName
+                                    },
+                                )
+                                Column(Modifier.padding(start = 8.dp)) {
+                                    Text(app.label, maxLines = 1)
+                                    Text(
+                                        app.packageName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) { Text("Save (${selected.size})") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
     )
 }
 

@@ -194,6 +194,78 @@ class SettingsStore(context: Context) {
         } ?: TlsSplitMode.OFF
         set(value) { prefs.edit().putString(KEY_TLS_SPLIT_MODE, value.name).apply() }
 
+    var dynamicIslandEnabled: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_ENABLED, true)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_ENABLED, value).apply() }
+
+    var dynamicIslandOverlayEnabled: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_OVERLAY_ENABLED, false)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_OVERLAY_ENABLED, value).apply() }
+
+    var dynamicIslandSize: DynamicIslandSize
+        get() = DynamicIslandSize.entries.firstOrNull {
+            it.name == prefs.getString(KEY_DYNAMIC_ISLAND_SIZE, null)
+        } ?: DynamicIslandSize.REGULAR
+        set(value) { prefs.edit().putString(KEY_DYNAMIC_ISLAND_SIZE, value.name).apply() }
+
+    var dynamicIslandCornerRadius: Int
+        get() = prefs.getInt(KEY_DYNAMIC_ISLAND_CORNER_RADIUS, 24)
+        set(value) { prefs.edit().putInt(KEY_DYNAMIC_ISLAND_CORNER_RADIUS, value.coerceIn(12, 36)).apply() }
+
+    var dynamicIslandPosition: DynamicIslandPosition
+        get() = DynamicIslandPosition.entries.firstOrNull {
+            it.name == prefs.getString(KEY_DYNAMIC_ISLAND_POSITION, null)
+        } ?: DynamicIslandPosition.TOP_CENTER
+        set(value) { prefs.edit().putString(KEY_DYNAMIC_ISLAND_POSITION, value.name).apply() }
+
+    var dynamicIslandTheme: DynamicIslandTheme
+        get() = DynamicIslandTheme.entries.firstOrNull {
+            it.name == prefs.getString(KEY_DYNAMIC_ISLAND_THEME, null)
+        } ?: DynamicIslandTheme.NEUMORPHIC
+        set(value) { prefs.edit().putString(KEY_DYNAMIC_ISLAND_THEME, value.name).apply() }
+
+    var dynamicIslandShowSpeed: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_SHOW_SPEED, true)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_SPEED, value).apply() }
+
+    var dynamicIslandShowPing: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_SHOW_PING, true)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_PING, value).apply() }
+
+    var dynamicIslandShowFlag: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_SHOW_FLAG, true)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_FLAG, value).apply() }
+
+    var dynamicIslandShowTimer: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_SHOW_TIMER, true)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_SHOW_TIMER, value).apply() }
+
+    var dynamicIslandAnimation: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_ISLAND_ANIMATION, true)
+        set(value) { prefs.edit().putBoolean(KEY_DYNAMIC_ISLAND_ANIMATION, value).apply() }
+
+    enum class DynamicIslandSize(
+        val label: String,
+        val heightDp: Int,
+        val widthDp: Int,
+    ) {
+        COMPACT("Compact", 36, 170),
+        REGULAR("Regular", 44, 230),
+        EXPANDED("Large", 52, 280),
+    }
+
+    enum class DynamicIslandPosition(val label: String) {
+        TOP_CENTER("Top Center"),
+        TOP_START("Top Left"),
+        TOP_END("Top Right"),
+    }
+
+    enum class DynamicIslandTheme(val label: String) {
+        NEUMORPHIC("Soft Neumorphic"),
+        DARK("Deep Black (iOS)"),
+        ACCENT("Brand Accent"),
+    }
+
     enum class TlsSplitMode(
         val label: String,
         val description: String,
@@ -314,6 +386,17 @@ class SettingsStore(context: Context) {
         private const val KEY_UPSTREAM_PROXY_PASSWORD = "upstream_proxy_password"
         private const val KEY_EXCLUDED_APPS = "excluded_apps"
         private const val KEY_TLS_SPLIT_MODE = "tls_split_mode"
+        private const val KEY_DYNAMIC_ISLAND_ENABLED = "dynamic_island_enabled"
+        private const val KEY_DYNAMIC_ISLAND_OVERLAY_ENABLED = "dynamic_island_overlay_enabled"
+        private const val KEY_DYNAMIC_ISLAND_SIZE = "dynamic_island_size"
+        private const val KEY_DYNAMIC_ISLAND_CORNER_RADIUS = "dynamic_island_corner_radius"
+        private const val KEY_DYNAMIC_ISLAND_POSITION = "dynamic_island_position"
+        private const val KEY_DYNAMIC_ISLAND_THEME = "dynamic_island_theme"
+        private const val KEY_DYNAMIC_ISLAND_SHOW_SPEED = "dynamic_island_show_speed"
+        private const val KEY_DYNAMIC_ISLAND_SHOW_PING = "dynamic_island_show_ping"
+        private const val KEY_DYNAMIC_ISLAND_SHOW_FLAG = "dynamic_island_show_flag"
+        private const val KEY_DYNAMIC_ISLAND_SHOW_TIMER = "dynamic_island_show_timer"
+        private const val KEY_DYNAMIC_ISLAND_ANIMATION = "dynamic_island_animation"
         const val DEFAULT_SOCKS_BIND_ADDRESS = "127.0.0.1"
         const val DEFAULT_SOCKS_PORT = 1080
         const val DEFAULT_HTTP_PROXY_PORT = 8080
