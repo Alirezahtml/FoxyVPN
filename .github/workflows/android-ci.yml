@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-ci-${{ github.ref }}
+  group: foxyvpn-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,13 +27,21 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android SDK Licenses & Install Build Tools 35
+      - name: Configure Android SDK & Licenses
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          mkdir -p "$SDK_DIR/licenses"
+          printf "\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n85435445a95c234340d05367a999a69d7b46701c\n" > "$SDK_DIR/licenses/android-sdk-license"
+          printf "\n84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910\n" > "$SDK_DIR/licenses/android-sdk-preview-license"
+          printf "\nd975f751698a77b662f1254ddbeed3901e976f5a\n" > "$SDK_DIR/licenses/intel-android-extra-license"
+          echo "ANDROID_HOME=$SDK_DIR" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_DIR" >> "$GITHUB_ENV"
+          SDKMANAGER=$(find "$SDK_DIR" -name sdkmanager -type f 2>/dev/null | head -n 1 || true)
+          if [ -n "$SDKMANAGER" ]; then
+            chmod +x "$SDKMANAGER" || true
+            yes | "$SDKMANAGER" --sdk_root="$SDK_DIR" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" --sdk_root="$SDK_DIR" "platform-tools" "platforms;android-35" "build-tools;35.0.0" || true
+          fi
 
       - name: Setup Gradle 8.10.2
         uses: gradle/actions/setup-gradle@v4
@@ -74,10 +82,20 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ env.STORE_PASSWORD }}
         run: |
-          gradle assembleDebug assembleRelease --no-daemon --stacktrace
+          gradle assembleDebug assembleRelease -Pandroid.builder.sdkDownload=true --no-daemon --stacktrace
           mkdir -p dist
           cp app/build/outputs/apk/debug/*.apk dist/FoxyVPN-Neu-debug.apk
-          cp app/build/outputs/apk/release/*.apk dist/FoxyVPN-Neu-release.apk
+          if [ -f "app/build/outputs/apk/release/app-release.apk" ]; then
+            cp app/build/outputs/apk/release/app-release.apk dist/FoxyVPN-Neu-release.apk
+          else
+            UNSIGNED_APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+            APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f 2>/dev/null | sort -V | tail -n 1 || true)
+            if [ -n "$APKSIGNER" ]; then
+              "$APKSIGNER" sign --ks release-keystore.jks --ks-key-alias "$SIGNING_KEY_ALIAS" --ks-pass "pass:$SIGNING_STORE_PASSWORD" --key-pass "pass:$SIGNING_KEY_PASSWORD" --out dist/FoxyVPN-Neu-release.apk "$UNSIGNED_APK"
+            else
+              cp "$UNSIGNED_APK" dist/FoxyVPN-Neu-release.apk
+            fi
+          fi
           ls -lh dist/
 
       - name: Clean Temporary Keystore
