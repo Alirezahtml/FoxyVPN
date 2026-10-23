@@ -430,14 +430,12 @@ fun NeumorphicSlideToConnect(
         if (maxDragPx > 0f) {
             when (state) {
                 ConnectionState.CONNECTED -> {
-                    // Position at the far right
                     offsetX.animateTo(maxDragPx, spring(stiffness = 300f))
                 }
                 ConnectionState.CONNECTING -> {
-                    // Stay in active transition
+                    offsetX.animateTo(maxDragPx, spring(stiffness = 300f))
                 }
                 ConnectionState.DISCONNECTED -> {
-                    // Reset to far left
                     offsetX.animateTo(0f, spring(stiffness = 400f))
                 }
             }
@@ -470,11 +468,57 @@ fun NeumorphicSlideToConnect(
     val trackShape = RoundedCornerShape(trackCornerRadius)
     val thumbShape = CircleShape
 
+    val dragModifier = Modifier.draggable(
+        orientation = Orientation.Horizontal,
+        enabled = state != ConnectionState.CONNECTING,
+        state = rememberDraggableState { delta ->
+            if (maxDragPx > 0f) {
+                coroutineScope.launch {
+                    val newOffset = (offsetX.value + delta).coerceIn(0f, maxDragPx)
+                    offsetX.snapTo(newOffset)
+                }
+            }
+        },
+        onDragStopped = {
+            if (maxDragPx > 0f) {
+                when (state) {
+                    ConnectionState.DISCONNECTED -> {
+                        if (offsetX.value >= maxDragPx * 0.55f) {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            offsetX.animateTo(maxDragPx, spring(stiffness = 500f))
+                            onRequestConnect()
+                            // If VPN permission dialog is shown or state stays DISCONNECTED, reset thumb cleanly
+                            kotlinx.coroutines.delay(350)
+                            if (state == ConnectionState.DISCONNECTED) {
+                                offsetX.animateTo(0f, spring(stiffness = 400f))
+                            }
+                        } else {
+                            offsetX.animateTo(0f, spring(stiffness = 500f))
+                        }
+                    }
+                    ConnectionState.CONNECTED -> {
+                        if (offsetX.value <= maxDragPx * 0.45f) {
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            offsetX.animateTo(0f, spring(stiffness = 500f))
+                            onDisconnect()
+                        } else {
+                            offsetX.animateTo(maxDragPx, spring(stiffness = 500f))
+                        }
+                    }
+                    ConnectionState.CONNECTING -> {
+                        // During connecting, allow tap to cancel
+                    }
+                }
+            }
+        },
+    )
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .height(trackHeight)
             .onSizeChanged { totalWidthPx = it.width.toFloat() }
+            .then(dragModifier)
             .neumorphicRaised(
                 shape = trackShape,
                 cornerRadius = trackCornerRadius,
@@ -532,7 +576,6 @@ fun NeumorphicSlideToConnect(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clickable {
-                                // Tap to cancel connecting
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onDisconnect()
                             },
@@ -575,57 +618,14 @@ fun NeumorphicSlideToConnect(
             }
         }
 
-        // Draggable Thumb
+        // Draggable / Tappable Thumb
         val currentOffsetPx = offsetX.value
-        val dragModifier = Modifier.draggable(
-            orientation = Orientation.Horizontal,
-            state = rememberDraggableState { delta ->
-                if (maxDragPx > 0f) {
-                    coroutineScope.launch {
-                        val newOffset = (offsetX.value + delta).coerceIn(0f, maxDragPx)
-                        offsetX.snapTo(newOffset)
-                    }
-                }
-            },
-            onDragStopped = {
-                if (maxDragPx > 0f) {
-                    when (state) {
-                        ConnectionState.DISCONNECTED -> {
-                            if (offsetX.value >= maxDragPx * 0.75f) {
-                                // Snap to end and trigger connect
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                offsetX.animateTo(maxDragPx, spring(stiffness = 500f))
-                                onRequestConnect()
-                            } else {
-                                // Snap back to start
-                                offsetX.animateTo(0f, spring(stiffness = 500f))
-                            }
-                        }
-                        ConnectionState.CONNECTED -> {
-                            if (offsetX.value <= maxDragPx * 0.25f) {
-                                // Snap to start and trigger disconnect
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                offsetX.animateTo(0f, spring(stiffness = 500f))
-                                onDisconnect()
-                            } else {
-                                // Snap back to end
-                                offsetX.animateTo(maxDragPx, spring(stiffness = 500f))
-                            }
-                        }
-                        ConnectionState.CONNECTING -> {
-                            // During connecting, allow tap to cancel
-                        }
-                    }
-                }
-            },
-        )
 
         Box(
             modifier = Modifier
                 .offset { IntOffset(currentOffsetPx.roundToInt(), 0) }
                 .padding(trackPadding)
                 .size(thumbSize)
-                .then(if (state != ConnectionState.CONNECTING) dragModifier else Modifier)
                 .neumorphicRaised(
                     shape = thumbShape,
                     cornerRadius = thumbRadius,
@@ -647,13 +647,29 @@ fun NeumorphicSlideToConnect(
                     color = Color.White.copy(alpha = 0.45f),
                     shape = thumbShape,
                 )
-                .clickable(
-                    enabled = state == ConnectionState.CONNECTING,
-                    onClick = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDisconnect()
-                    },
-                ),
+                .clickable {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    when (state) {
+                        ConnectionState.DISCONNECTED -> {
+                            coroutineScope.launch {
+                                if (maxDragPx > 0f) {
+                                    offsetX.animateTo(maxDragPx, spring(stiffness = 400f))
+                                }
+                                onRequestConnect()
+                                kotlinx.coroutines.delay(350)
+                                if (state == ConnectionState.DISCONNECTED) {
+                                    offsetX.animateTo(0f, spring(stiffness = 400f))
+                                }
+                            }
+                        }
+                        ConnectionState.CONNECTED, ConnectionState.CONNECTING -> {
+                            coroutineScope.launch {
+                                offsetX.animateTo(0f, spring(stiffness = 400f))
+                                onDisconnect()
+                            }
+                        }
+                    }
+                },
             contentAlignment = Alignment.Center,
         ) {
             when (state) {

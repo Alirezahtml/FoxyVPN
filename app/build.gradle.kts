@@ -21,7 +21,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.vauth.foxyvpn"
+        applicationId = "com.vauth.foxyvpn.neu"
         minSdk = 26
         targetSdk = 35
         versionCode = 44
