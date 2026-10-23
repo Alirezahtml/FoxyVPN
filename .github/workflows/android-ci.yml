@@ -2,21 +2,23 @@ name: Android CI / CD (Auto APK Release)
 
 on:
   push:
-    branches: [main, master]
-    tags: ["v*.*.*"]
   pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: android-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-deliver:
-    name: Build & Deliver Installable APKs
+    name: Build & Deliver Signed APKs
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -24,19 +26,21 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-        with:
-          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
 
-      - name: Setup Gradle
+      - name: Accept Android SDK Licenses & Install Build Tools 35
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Setup Gradle 8.10.2
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.10.2"
 
-      - name: Prepare Signing Keystores (Zero-Config Fallback)
+      - name: Prepare Signing Keystores (Automatic Fallback)
         id: signing
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
@@ -61,7 +65,7 @@ jobs:
             echo "KEY_ALIAS=androiddebugkey" >> "$GITHUB_ENV"
             echo "KEY_PASSWORD=android" >> "$GITHUB_ENV"
             echo "STORE_PASSWORD=android" >> "$GITHUB_ENV"
-            echo "No custom signing secrets needed; automatically signing Release APK for direct installation."
+            echo "No custom signing secrets required; automatically signing Release APK for direct installation."
           fi
 
       - name: Assemble Signed Debug & Release APKs
@@ -85,21 +89,25 @@ jobs:
         with:
           name: FoxyVPN-Neu-Installable-APKs
           path: dist/*.apk
+          if-no-files-found: error
           retention-days: 30
 
       - name: Automatically Publish Direct APK to GitHub Releases
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'latest-apk' }}
           name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'FoxyVPN Neu - Direct Install APK (Latest Build)' }}
           body: |
-            ### FoxyVPN Neu (Soft Neumorphism + Dynamic Island)
-            - **Package ID:** `com.vauth.foxyvpn.neu` (نصب کاملاً مستقل و بدون تداخل در کنار نسخه اصلی FoxyVPN)
-            - **موتور بومی:** `libhev-socks5-tunnel.so` برای تمام معماری‌ها (`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`)
-            - **فایل‌های نصبی مستقیم (امضاشده و آماده نصب روی اندروید):**
-              - `FoxyVPN-Neu-release.apk` (نسخه بهینه و نهایی)
-              - `FoxyVPN-Neu-debug.apk` (نسخه دیباگ)
+            ### FoxyVPN Neu (Bilingual EN/FA • Soft Neumorphism • Dynamic Island)
+            - **Package ID:** `com.vauth.foxyvpn.neu` (Installs side-by-side with original FoxyVPN without conflict)
+            - **Native Tunnel Engine:** `libhev-socks5-tunnel.so` bundled for `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`
+            - **Direct Installable Signed APKs:**
+              - `FoxyVPN-Neu-release.apk` (Signed & Optimized Release APK)
+              - `FoxyVPN-Neu-debug.apk` (Signed Debug APK)
           files: |
             dist/FoxyVPN-Neu-release.apk
             dist/FoxyVPN-Neu-debug.apk

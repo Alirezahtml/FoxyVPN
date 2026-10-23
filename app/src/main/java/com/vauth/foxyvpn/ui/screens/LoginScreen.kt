@@ -2,11 +2,8 @@ package com.vauth.foxyvpn.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,11 +11,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -50,12 +45,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.vauth.foxyvpn.data.FxaAuthRepository
 import com.vauth.foxyvpn.ui.theme.NeumorphicButton
 import com.vauth.foxyvpn.ui.theme.NeumorphicCard
+import com.vauth.foxyvpn.ui.theme.currentFoxyStrings
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
-import com.vauth.foxyvpn.ui.theme.neumorphicSunken
 import com.vauth.foxyvpn.ui.theme.shakeOnTrigger
 import com.vauth.foxyvpn.ui.theme.staggeredEntrance
 import com.vauth.foxyvpn.ui.theme.subtleFloatAnimation
@@ -75,6 +69,7 @@ fun LoginScreen(
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val neu = currentNeumorphicColors
+    val s = currentFoxyStrings
 
     BackHandler(enabled = awaitingTwoFactor) {
         authRepository.clearPendingSession()
@@ -133,7 +128,7 @@ fun LoginScreen(
             // Neumorphic Logo Badge
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(84.dp)
                     .subtleFloatAnimation()
                     .staggeredEntrance(0)
                     .clip(CircleShape)
@@ -148,16 +143,17 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(22.dp))
 
             Text(
-                "Sign in to FoxyVPN",
+                s.loginTitle,
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 color = neu.textPrimary,
+                textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Connect with your Firefox account to utilize 50 GB of fast, encrypted monthly VPN traffic.",
+                s.loginSubtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = neu.textSecondary,
                 textAlign = TextAlign.Center,
@@ -176,7 +172,7 @@ fun LoginScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp),
+                        .padding(22.dp),
                 ) {
                     if (!awaitingTwoFactor) {
                         OutlinedTextField(
@@ -184,7 +180,7 @@ fun LoginScreen(
                             onValueChange = {
                                 email = it.replace(Regex("[\\p{Z}\\u200B-\\u200D\\uFEFF\\u00A0\\s]+"), "").lowercase()
                             },
-                            label = { Text("Firefox Account Email") },
+                            label = { Text(s.loginEmailLabel) },
                             leadingIcon = { Icon(Icons.Filled.Mail, contentDescription = null, tint = neu.textSecondary) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(
@@ -195,14 +191,14 @@ fun LoginScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
 
-                        Spacer(Modifier.height(14.dp))
+                        Spacer(Modifier.height(16.dp))
 
                         OutlinedTextField(
                             value = password,
                             onValueChange = {
                                 password = it.replace(Regex("[\\u200B-\\u200D\\uFEFF]"), "")
                             },
-                            label = { Text("Password") },
+                            label = { Text(s.loginPasswordLabel) },
                             leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, tint = neu.textSecondary) },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
@@ -238,7 +234,7 @@ fun LoginScreen(
                                 )
                             } else {
                                 Text(
-                                    "Continue",
+                                    s.loginContinueButton,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = Color.White,
                                 )
@@ -246,7 +242,7 @@ fun LoginScreen(
                         }
                     } else {
                         Text(
-                            "Enter the confirmation code sent to your email",
+                            s.loginTwoFactorPrompt,
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = neu.textPrimary,
                         )
@@ -256,7 +252,7 @@ fun LoginScreen(
                             onValueChange = {
                                 code = it.replace(Regex("[\\p{Z}\\u200B-\\u200D\\uFEFF\\u00A0\\s]+"), "")
                             },
-                            label = { Text("6-Digit Code") },
+                            label = { Text(s.loginTwoFactorCodeLabel) },
                             leadingIcon = { Icon(Icons.Filled.VpnKey, contentDescription = null, tint = neu.textSecondary) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(
@@ -291,7 +287,7 @@ fun LoginScreen(
                                 )
                             } else {
                                 Text(
-                                    "Verify & Sign In",
+                                    s.loginVerifyButton,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = Color.White,
                                 )

@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -57,9 +56,10 @@ import androidx.core.content.FileProvider
 import com.vauth.foxyvpn.data.AppLogger
 import com.vauth.foxyvpn.data.LogEntry
 import com.vauth.foxyvpn.data.LogLevel
+import com.vauth.foxyvpn.ui.theme.FoxyStrings
 import com.vauth.foxyvpn.ui.theme.LocalFoxyStatusColors
-import com.vauth.foxyvpn.ui.theme.NeumorphicCard
 import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
+import com.vauth.foxyvpn.ui.theme.currentFoxyStrings
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicSunken
 import com.vauth.foxyvpn.ui.theme.neumorphicTouchBounce
@@ -71,10 +71,16 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class LogFilter(val label: String, val levels: Set<LogLevel>) {
-    ALL("All", setOf(LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR)),
-    INFO("Info", setOf(LogLevel.INFO)),
-    PROBLEMS("Problems", setOf(LogLevel.WARN, LogLevel.ERROR)),
+private enum class LogFilter(val levels: Set<LogLevel>) {
+    ALL(setOf(LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR)),
+    INFO(setOf(LogLevel.INFO)),
+    PROBLEMS(setOf(LogLevel.WARN, LogLevel.ERROR));
+
+    fun localizedLabel(s: FoxyStrings): String = when (this) {
+        ALL -> s.logFilterAll
+        INFO -> s.logFilterInfo
+        PROBLEMS -> s.logFilterProblems
+    }
 }
 
 private suspend fun writeLogFile(context: Context): File = withContext(Dispatchers.IO) {
@@ -96,6 +102,7 @@ fun LogsScreen(onBack: () -> Unit) {
 
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
+    val s = currentFoxyStrings
 
     val countsByFilter: Map<LogFilter, Int> = remember(entries) {
         LogFilter.entries.associateWith { option -> entries.count { it.level in option.levels } }
@@ -110,21 +117,20 @@ fun LogsScreen(onBack: () -> Unit) {
             TopAppBar(
                 title = {
                     Text(
-                        if (visible.size == entries.size) "Logs (${entries.size})"
-                        else "Logs (${visible.size}/${entries.size})",
+                        s.logsTitle(visible.size, entries.size),
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = neu.textPrimary,
                     )
                 },
                 navigationIcon = {
                     NeumorphicIconButton(
-                        size = 38.dp,
+                        size = 42.dp,
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp),
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = s.back,
                             tint = neu.textPrimary,
                             modifier = Modifier.size(18.dp),
                         )
@@ -132,10 +138,10 @@ fun LogsScreen(onBack: () -> Unit) {
                 },
                 actions = {
                     NeumorphicIconButton(
-                        size = 38.dp,
+                        size = 40.dp,
                         onClick = {
                             if (entries.isEmpty()) {
-                                Toast.makeText(context, "No log entries yet", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, s.logsEmpty, Toast.LENGTH_SHORT).show()
                                 return@NeumorphicIconButton
                             }
                             scope.launch {
@@ -152,32 +158,32 @@ fun LogsScreen(onBack: () -> Unit) {
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
                                 context.startActivity(
-                                    Intent.createChooser(shareIntent, "Save or send FoxyVPN logs").apply {
+                                    Intent.createChooser(shareIntent, s.viewConnectionLogsTitle).apply {
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     },
                                 )
                             }
                         },
                     ) {
-                        Icon(Icons.Filled.Share, contentDescription = "Share", tint = neu.textPrimary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Share, contentDescription = null, tint = neu.textPrimary, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(8.dp))
                     NeumorphicIconButton(
-                        size = 38.dp,
+                        size = 40.dp,
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             clipboard.setPrimaryClip(ClipData.newPlainText("FoxyVPN logs", AppLogger.exportAsText()))
-                            Toast.makeText(context, "Logs copied to clipboard", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, s.logsCopiedToast, Toast.LENGTH_SHORT).show()
                         },
                     ) {
-                        Icon(Icons.Filled.ContentCopy, contentDescription = "Copy", tint = neu.textPrimary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.ContentCopy, contentDescription = null, tint = neu.textPrimary, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(8.dp))
                     NeumorphicIconButton(
-                        size = 38.dp,
+                        size = 40.dp,
                         onClick = { AppLogger.clear() },
                     ) {
-                        Icon(Icons.Filled.DeleteSweep, contentDescription = "Clear", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.DeleteSweep, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(10.dp))
                 },
@@ -189,7 +195,7 @@ fun LogsScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 18.dp),
         ) {
             // Neumorphic filter pills
             Row(
@@ -210,11 +216,11 @@ fun LogsScreen(onBack: () -> Unit) {
                             .clip(pillShape)
                             .background(if (isSelected) neu.accent else neu.surfaceElevated)
                             .clickable { filter = option }
-                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                            .padding(horizontal = 16.dp, vertical = 9.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = "${option.label} ($count)",
+                            text = "${option.localizedLabel(s)} ($count)",
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                             ),
@@ -227,15 +233,15 @@ fun LogsScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             // Sunken Neumorphic Terminal Console
-            val consoleShape = RoundedCornerShape(16.dp)
+            val consoleShape = RoundedCornerShape(18.dp)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(bottom = 12.dp)
+                    .padding(bottom = 14.dp)
                     .neumorphicSunken(
                         shape = consoleShape,
-                        cornerRadius = 16.dp,
+                        cornerRadius = 18.dp,
                         depth = 4.dp,
                         surfaceColor = neu.surfaceElevated,
                     )
@@ -244,7 +250,7 @@ fun LogsScreen(onBack: () -> Unit) {
                         color = if (neu.isDark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.5f),
                         shape = consoleShape,
                     )
-                    .padding(12.dp),
+                    .padding(14.dp),
             ) {
                 if (visible.isEmpty()) {
                     Column(
@@ -254,9 +260,9 @@ fun LogsScreen(onBack: () -> Unit) {
                     ) {
                         Text(
                             when {
-                                entries.isEmpty() -> "No log entries yet."
-                                filter == LogFilter.PROBLEMS -> "No warnings or errors logged."
-                                else -> "Nothing matches this filter."
+                                entries.isEmpty() -> s.logsEmpty
+                                filter == LogFilter.PROBLEMS -> s.logsNoProblems
+                                else -> s.logsNothingMatches
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = neu.textSecondary,
@@ -273,7 +279,7 @@ fun LogsScreen(onBack: () -> Unit) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
+                                    .padding(vertical = 5.dp),
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(

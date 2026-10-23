@@ -99,6 +99,7 @@ private val DarkColors = darkColorScheme(
 @Composable
 fun FoxyVpnTheme(
     themeMode: ThemeMode = ThemeMode.SYSTEM,
+    appLanguage: AppLanguage = AppLanguage.EN,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
@@ -154,10 +155,14 @@ fun FoxyVpnTheme(
         }
     }
 
+    val strings = if (appLanguage == AppLanguage.FA) PersianFoxyStrings else EnglishFoxyStrings
+    val layoutDirection = if (appLanguage.isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
+
     CompositionLocalProvider(
         LocalFoxyStatusColors provides if (darkTheme) DarkStatusColors else LightStatusColors,
         LocalNeumorphicColors provides neuColors,
-        LocalLayoutDirection provides LayoutDirection.Ltr,
+        LocalFoxyStrings provides strings,
+        LocalLayoutDirection provides layoutDirection,
     ) {
         MaterialExpressiveTheme(
             colorScheme = colorScheme,

@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import com.vauth.foxyvpn.quicksettings.DynamicIslandOverlayService
 import com.vauth.foxyvpn.ui.navigation.FoxyNavGraph
 import com.vauth.foxyvpn.ui.theme.FoxyVpnTheme
+import com.vauth.foxyvpn.ui.theme.rememberLanguageController
 import com.vauth.foxyvpn.ui.theme.rememberThemeController
 import com.vauth.foxyvpn.vpn.FoxyVpnService
 
@@ -83,15 +84,19 @@ class MainActivity : ComponentActivity() {
             DynamicIslandOverlayService.start(this)
         }
         setContent {
-
             val themeController = rememberThemeController(app.settingsStore)
-            FoxyVpnTheme(themeMode = themeController.mode) {
+            val languageController = rememberLanguageController(app.settingsStore)
+            FoxyVpnTheme(
+                themeMode = themeController.mode,
+                appLanguage = languageController.language,
+            ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val navController = rememberNavController()
                     FoxyNavGraph(
                         navController = navController,
                         app = app,
                         themeController = themeController,
+                        languageController = languageController,
                         onRequestConnect = { requestConnect() },
                         onDisconnect = { FoxyVpnService.stop(this) },
                     )

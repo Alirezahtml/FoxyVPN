@@ -2,7 +2,6 @@ package com.vauth.foxyvpn.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
@@ -55,12 +53,12 @@ import androidx.compose.ui.unit.sp
 import com.vauth.foxyvpn.data.ProxyStateStore
 import com.vauth.foxyvpn.data.RECOMMENDED_COUNTRY_CODE
 import com.vauth.foxyvpn.data.ServerListClient
-import com.vauth.foxyvpn.data.model.ProxyCandidate
 import com.vauth.foxyvpn.data.model.VpnCountry
 import com.vauth.foxyvpn.data.model.emojiFlag
 import com.vauth.foxyvpn.ui.theme.LocalFoxyStatusColors
 import com.vauth.foxyvpn.ui.theme.NeumorphicCard
 import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
+import com.vauth.foxyvpn.ui.theme.currentFoxyStrings
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicSunken
 import com.vauth.foxyvpn.ui.theme.neumorphicTouchBounce
@@ -97,6 +95,7 @@ fun ServerListScreen(
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
     val haptics = LocalHapticFeedback.current
+    val s = currentFoxyStrings
 
     LaunchedEffect(Unit) {
         val cached = withContext(Dispatchers.IO) { serverListClient.loadCachedCountries() }
@@ -111,7 +110,7 @@ fun ServerListScreen(
             }
             .onFailure {
                 if (countries.isEmpty()) {
-                    errorMessage = it.message ?: "Failed to load server list"
+                    errorMessage = it.message ?: s.noActiveServers
                 }
             }
         isLoading = false
@@ -149,20 +148,20 @@ fun ServerListScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Locations",
+                        s.locationsTitle,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = neu.textPrimary,
                     )
                 },
                 navigationIcon = {
                     NeumorphicIconButton(
-                        size = 38.dp,
+                        size = 42.dp,
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp),
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = s.back,
                             tint = neu.textPrimary,
                             modifier = Modifier.size(18.dp),
                         )
@@ -176,11 +175,11 @@ fun ServerListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // Sunken Neumorphic Search Bar
-            val searchShape = RoundedCornerShape(16.dp)
+            val searchShape = RoundedCornerShape(18.dp)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -188,7 +187,7 @@ fun ServerListScreen(
                     .padding(vertical = 8.dp)
                     .neumorphicSunken(
                         shape = searchShape,
-                        cornerRadius = 16.dp,
+                        cornerRadius = 18.dp,
                         depth = 3.dp,
                         surfaceColor = neu.surfaceElevated,
                     )
@@ -197,13 +196,13 @@ fun ServerListScreen(
                         color = if (neu.isDark) Color.White.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.5f),
                         shape = searchShape,
                     )
-                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Filled.Search,
-                        contentDescription = "Search",
+                        contentDescription = null,
                         tint = neu.textSecondary,
                         modifier = Modifier.size(20.dp),
                     )
@@ -213,7 +212,7 @@ fun ServerListScreen(
                         onValueChange = { searchQuery = it },
                         placeholder = {
                             Text(
-                                "Search countries or cities...",
+                                s.searchLocationsPlaceholder,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = neu.textSecondary.copy(alpha = 0.7f),
                             )
@@ -280,7 +279,7 @@ fun ServerListScreen(
                                     val isSelected = row.country.code == selected?.countryCode
                                     NeumorphicCard(
                                         modifier = Modifier.fillMaxWidth(),
-                                        cornerRadius = 16.dp,
+                                        cornerRadius = 18.dp,
                                         onClick = {
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                             val candidates = ServerListClient.candidatesForCountry(countries, row.country.code)
@@ -289,19 +288,19 @@ fun ServerListScreen(
                                                 proxyStateStore.save(chosen)
                                                 onServerSelected()
                                             } else {
-                                                errorMessage = "No available servers for ${row.country.name}"
+                                                errorMessage = s.noActiveServers
                                             }
                                         },
                                     ) {
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(16.dp),
+                                                .padding(18.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             Box(
                                                 modifier = Modifier
-                                                    .size(40.dp)
+                                                    .size(44.dp)
                                                     .clip(CircleShape)
                                                     .background(neu.accent.copy(alpha = 0.15f)),
                                                 contentAlignment = Alignment.Center,
@@ -310,19 +309,19 @@ fun ServerListScreen(
                                                     Icons.Filled.Public,
                                                     contentDescription = null,
                                                     tint = neu.accent,
-                                                    modifier = Modifier.size(22.dp),
+                                                    modifier = Modifier.size(24.dp),
                                                 )
                                             }
                                             Spacer(Modifier.width(14.dp))
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(
-                                                    "Recommended (Fastest)",
+                                                    s.recommendedFastest,
                                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                                     color = neu.textPrimary,
                                                 )
-                                                Spacer(Modifier.height(2.dp))
+                                                Spacer(Modifier.height(3.dp))
                                                 Text(
-                                                    "Automatically selects optimal edge server",
+                                                    s.recommendedSubtitle,
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = neu.textSecondary,
                                                 )
@@ -330,7 +329,7 @@ fun ServerListScreen(
                                             if (isSelected) {
                                                 Icon(
                                                     Icons.Filled.CheckCircle,
-                                                    contentDescription = "Selected",
+                                                    contentDescription = null,
                                                     tint = statusColors.connected,
                                                     modifier = Modifier.size(24.dp),
                                                 )
@@ -342,14 +341,14 @@ fun ServerListScreen(
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(top = 10.dp, bottom = 4.dp, start = 4.dp),
+                                            .padding(top = 12.dp, bottom = 4.dp, start = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Text(
                                             text = row.country.emojiFlag,
                                             fontSize = 20.sp,
                                         )
-                                        Spacer(Modifier.width(8.dp))
+                                        Spacer(Modifier.width(10.dp))
                                         Text(
                                             text = row.country.name,
                                             style = MaterialTheme.typography.labelLarge.copy(
@@ -392,7 +391,7 @@ fun ServerListScreen(
                                             .padding(start = 12.dp)
                                             .staggeredEntrance(row.cityIndex % 8, delayPerItemMs = 35)
                                             .neumorphicTouchBounce(),
-                                        cornerRadius = 14.dp,
+                                        cornerRadius = 16.dp,
                                         onClick = {
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                             val candidates = ServerListClient.candidatesForCity(countries, row.country.code, city.code)
@@ -401,14 +400,14 @@ fun ServerListScreen(
                                                 proxyStateStore.save(chosen)
                                                 onServerSelected()
                                             } else {
-                                                errorMessage = "No available servers in ${city.code}"
+                                                errorMessage = s.noActiveServers
                                             }
                                         },
                                     ) {
                                         Row(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                .padding(horizontal = 18.dp, vertical = 14.dp),
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             Column(modifier = Modifier.weight(1f)) {
@@ -419,10 +418,11 @@ fun ServerListScreen(
                                                 )
                                                 val primaryHostname = city.servers.firstOrNull()?.hostname
                                                 val serverLabel = when {
-                                                    primaryHostname == null -> "No active servers"
-                                                    serverCount > 1 -> "$primaryHostname (+${serverCount - 1} edges)"
+                                                    primaryHostname == null -> s.noActiveServers
+                                                    serverCount > 1 -> "$primaryHostname (${s.extraEdgesSuffix(serverCount - 1)})"
                                                     else -> primaryHostname
                                                 }
+                                                Spacer(Modifier.height(2.dp))
                                                 Text(
                                                     text = serverLabel,
                                                     style = MaterialTheme.typography.bodySmall,
@@ -438,9 +438,9 @@ fun ServerListScreen(
                                             }
                                             Box(
                                                 modifier = Modifier
-                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clip(RoundedCornerShape(10.dp))
                                                     .background(neu.surfaceElevated)
-                                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
                                             ) {
                                                 Text(
                                                     text = pingText,
@@ -453,7 +453,7 @@ fun ServerListScreen(
                                                 Spacer(Modifier.width(10.dp))
                                                 Icon(
                                                     Icons.Filled.CheckCircle,
-                                                    contentDescription = "Selected",
+                                                    contentDescription = null,
                                                     tint = statusColors.connected,
                                                     modifier = Modifier.size(22.dp),
                                                 )

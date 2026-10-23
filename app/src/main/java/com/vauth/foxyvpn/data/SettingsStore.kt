@@ -3,11 +3,13 @@ package com.vauth.foxyvpn.data
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.vauth.foxyvpn.ui.theme.AppLanguage
 import com.vauth.foxyvpn.ui.theme.ThemeMode
 import com.vauth.foxyvpn.vpn.FoxyVpnService
 import com.vauth.foxyvpn.widget.QuickConnectWidgetProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import java.util.Locale
 
 class SettingsStore(context: Context) {
     private val appContext = context.applicationContext
@@ -27,6 +29,17 @@ class SettingsStore(context: Context) {
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
         )
     }
+
+    var appLanguage: AppLanguage
+        get() {
+            val saved = prefs.getString(KEY_APP_LANGUAGE, null)
+            return AppLanguage.entries.firstOrNull { it.name == saved || it.code == saved }
+                ?: if (Locale.getDefault().language == "fa") AppLanguage.FA else AppLanguage.EN
+        }
+        set(value) {
+            prefs.edit().putString(KEY_APP_LANGUAGE, value.name).apply()
+            _islandConfigRevision.value++
+        }
 
     var themeMode: ThemeMode
         get() = ThemeMode.entries.firstOrNull {
@@ -188,7 +201,6 @@ class SettingsStore(context: Context) {
     var excludedApps: Set<String>
         get() = prefs.getStringSet(KEY_EXCLUDED_APPS, emptySet())?.toSet() ?: emptySet()
         set(value) {
-
             prefs.edit().putStringSet(KEY_EXCLUDED_APPS, HashSet(value)).apply()
         }
 
@@ -301,117 +313,171 @@ class SettingsStore(context: Context) {
 
     enum class DynamicIslandSize(
         val label: String,
+        val persianLabel: String,
         val heightDp: Int,
         val widthDp: Int,
     ) {
-        COMPACT("Compact", 36, 170),
-        REGULAR("Regular", 44, 230),
-        EXPANDED("Large", 52, 280),
+        COMPACT("Compact", "کوچک", 36, 170),
+        REGULAR("Regular", "متوسط", 44, 230),
+        EXPANDED("Large", "بزرگ", 52, 280),
+        ;
+
+        fun localizedLabel(isRtl: Boolean): String = if (isRtl) persianLabel else label
     }
 
-    enum class DynamicIslandPosition(val label: String) {
-        TOP_CENTER("Top Center"),
-        TOP_START("Top Left"),
-        TOP_END("Top Right"),
+    enum class DynamicIslandPosition(
+        val label: String,
+        val persianLabel: String,
+    ) {
+        TOP_CENTER("Top Center", "بالا وسط"),
+        TOP_START("Top Start", "بالا راست/چپ"),
+        TOP_END("Top End", "بالا انتها"),
+        ;
+
+        fun localizedLabel(isRtl: Boolean): String = if (isRtl) persianLabel else label
     }
 
-    enum class DynamicIslandTheme(val label: String) {
-        NEUMORPHIC("Soft Neumorphic"),
-        DARK("Deep Black (iOS)"),
-        ACCENT("Brand Accent"),
+    enum class DynamicIslandTheme(
+        val label: String,
+        val persianLabel: String,
+    ) {
+        NEUMORPHIC("Soft Neumorphic", "نئومورفیک نرم"),
+        DARK("Deep Black (iOS)", "مشکی عمیق"),
+        ACCENT("Brand Accent", "رنگ اصلی برنامه"),
+        ;
+
+        fun localizedLabel(isRtl: Boolean): String = if (isRtl) persianLabel else label
     }
 
     enum class TlsSplitMode(
         val label: String,
+        val persianLabel: String,
         val description: String,
+        val persianDescription: String,
     ) {
         OFF(
             label = "Disabled",
+            persianLabel = "غیرفعال",
             description = "Standard TLS handshake without fragmentation",
+            persianDescription = "ارتباط استاندارد بدون تکه‌تکه‌سازی بسته",
         ),
         FIRST_BYTE(
             label = "First byte",
+            persianLabel = "بایت اول",
             description = "Splits TLS record header at byte 0 (0x16)",
+            persianDescription = "برش هدر بسته در بایت اول برای عبور از فیلترینگ",
         ),
         SNI(
             label = "SNI hostname",
+            persianLabel = "نام دامنه (SNI)",
             description = "Fragments the SNI extension across packets (defeats DPI)",
+            persianDescription = "تکه‌تکه‌سازی نام دامنه برای دور زدن بازرسی عمیق بسته",
         ),
         ;
+
+        fun localizedLabel(isRtl: Boolean): String = if (isRtl) persianLabel else label
+        fun localizedDescription(isRtl: Boolean): String = if (isRtl) persianDescription else description
     }
 
     enum class UpstreamProxyType { SOCKS5, HTTP }
 
     enum class DnsProvider(
         val label: String,
+        val persianLabel: String,
         val dohUrl: String?,
     ) {
         SYSTEM_DEFAULT(
             label = "Default",
+            persianLabel = "پیش‌فرض سرور",
             dohUrl = null,
         ),
         CLOUDFLARE(
             label = "Cloudflare",
+            persianLabel = "کلودفلر (Cloudflare)",
             dohUrl = "https://1.1.1.1/dns-query",
         ),
         GOOGLE(
             label = "Google",
+            persianLabel = "گوگل (Google)",
             dohUrl = "https://8.8.8.8/dns-query",
         ),
         QUAD9(
             label = "Quad9",
+            persianLabel = "کواد۹ (Quad9)",
             dohUrl = "https://9.9.9.9/dns-query",
         ),
         ADGUARD(
             label = "AdGuard",
+            persianLabel = "ادگارد (AdGuard)",
             dohUrl = "https://dns.adguard-dns.com/dns-query",
         ),
         CUSTOM(
             label = "Custom DoH",
+            persianLabel = "آدرس سفارشی DoH",
             dohUrl = null,
         ),
         ;
+
+        fun localizedLabel(isRtl: Boolean): String = if (isRtl) persianLabel else label
     }
 
     enum class BootstrapDnsProvider(
         val label: String,
+        val persianLabel: String,
         val description: String,
+        val persianDescription: String,
         val addresses: List<String>,
     ) {
         AUTOMATIC(
             label = "Automatic",
+            persianLabel = "خودکار (پیشنهادی)",
             description = "Races all default DoH endpoints",
+            persianDescription = "استفاده همزمان از سریع‌ترین سرورهای دی‌ان‌اس",
             addresses = listOf("9.9.9.9", "1.1.1.1", "8.8.8.8"),
         ),
         QUAD9(
             label = "Quad9",
+            persianLabel = "کواد۹ (Quad9)",
             description = "9.9.9.9, 149.112.112.112",
+            persianDescription = "9.9.9.9, 149.112.112.112",
             addresses = listOf("9.9.9.9", "149.112.112.112"),
         ),
         CLOUDFLARE(
             label = "Cloudflare",
+            persianLabel = "کلودفلر (Cloudflare)",
             description = "1.1.1.1, 1.0.0.1",
+            persianDescription = "1.1.1.1, 1.0.0.1",
             addresses = listOf("1.1.1.1", "1.0.0.1"),
         ),
         GOOGLE(
             label = "Google",
+            persianLabel = "گوگل (Google)",
             description = "8.8.8.8, 8.8.4.4",
+            persianDescription = "8.8.8.8, 8.8.4.4",
             addresses = listOf("8.8.8.8", "8.8.4.4"),
         ),
         SYSTEM(
             label = "System DNS",
+            persianLabel = "دی‌ان‌اس سیستم",
             description = "Local network DNS",
+            persianDescription = "استفاده از دی‌ان‌اس شبکه فعلی دستگاه",
             addresses = emptyList(),
         ),
         CUSTOM(
             label = "Custom IP",
+            persianLabel = "آی‌پی سفارشی",
             description = "Specify a custom DoH IP resolver address",
+            persianDescription = "وارد کردن آدرس آی‌پی دلخواه برای دی‌ان‌اس",
             addresses = emptyList(),
         ),
         ;
+
+        fun localizedLabel(isRtl: Boolean): String = if (isRtl) persianLabel else label
+        fun localizedDescription(isRtl: Boolean): String = if (isRtl) persianDescription else description
     }
 
     companion object {
+        private const val KEY_APP_LANGUAGE = "app_language"
         private const val KEY_THEME_MODE = "theme_mode"
         private const val KEY_EXIT_CHECK = "exit_check_enabled"
         private const val KEY_CUSTOM_MTU = "custom_mtu"

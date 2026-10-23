@@ -330,7 +330,7 @@ fun NeumorphicButton(
                     onClick()
                 },
             )
-            .padding(horizontal = 20.dp, vertical = 14.dp),
+            .padding(horizontal = 22.dp, vertical = 15.dp),
         contentAlignment = Alignment.Center,
     ) {
         content()
@@ -391,8 +391,8 @@ fun NeumorphicIconButton(
 
 /**
  * Slide-to-Connect Neumorphic Component.
- * - Distinct gesture to Connect (drag thumb to right end).
- * - Distinct gesture to Disconnect (drag thumb to left end / distinct slide).
+ * - Distinct gesture to Connect (drag thumb to end).
+ * - Distinct gesture to Disconnect (drag thumb to start).
  * - Independent visual feedback and animations for Ready, Connecting, Connected, Disconnecting, Error.
  */
 @Composable
@@ -405,15 +405,16 @@ fun NeumorphicSlideToConnect(
 ) {
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
+    val s = currentFoxyStrings
     val haptics = LocalHapticFeedback.current
     val density = LocalDensity.current
     val coroutineScope = rememberCoroutineScope()
 
-    val trackHeight = 64.dp
-    val thumbSize = 54.dp
-    val trackPadding = 5.dp
-    val thumbRadius = 27.dp
-    val trackCornerRadius = 32.dp
+    val trackHeight = 68.dp
+    val thumbSize = 56.dp
+    val trackPadding = 6.dp
+    val thumbRadius = 28.dp
+    val trackCornerRadius = 34.dp
 
     var totalWidthPx by remember { mutableFloatStateOf(0f) }
     val maxDragPx = remember(totalWidthPx, density) {
@@ -484,6 +485,7 @@ fun NeumorphicSlideToConnect(
 
     val dragModifier = Modifier.draggable(
         orientation = Orientation.Horizontal,
+        reverseDirection = s.isRtl,
         enabled = state != ConnectionState.CONNECTING && !isDisconnecting,
         state = rememberDraggableState { delta ->
             if (maxDragPx > 0f) {
@@ -565,7 +567,7 @@ fun NeumorphicSlideToConnect(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 20.dp),
             contentAlignment = Alignment.Center,
         ) {
             when {
@@ -578,7 +580,7 @@ fun NeumorphicSlideToConnect(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            text = "Disconnecting\u2026",
+                            text = s.disconnecting,
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = statusColors.connecting,
                         )
@@ -589,18 +591,18 @@ fun NeumorphicSlideToConnect(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .padding(start = 52.dp)
+                            .padding(start = 56.dp)
                             .graphicsLayer { alpha = labelAlpha },
                     ) {
                         Text(
-                            text = if (hasError) "Slide to Retry Connection" else "Slide to Connect",
+                            text = if (hasError) s.slideToRetry else s.slideToConnect,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.4.sp,
+                                letterSpacing = 0.3.sp,
                             ),
-                            color = if (hasError) errorColor else neu.textPrimary.copy(alpha = 0.78f),
+                            color = if (hasError) errorColor else neu.textPrimary.copy(alpha = 0.82f),
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(10.dp))
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
@@ -613,7 +615,7 @@ fun NeumorphicSlideToConnect(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .padding(end = 52.dp)
+                            .padding(end = 56.dp)
                             .clickable {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 onDisconnect()
@@ -626,7 +628,7 @@ fun NeumorphicSlideToConnect(
                         )
                         Spacer(Modifier.width(10.dp))
                         Text(
-                            text = "Connecting\u2026 (Tap to Cancel)",
+                            text = s.connectingTapToCancel,
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = statusColors.connecting,
                         )
@@ -637,7 +639,7 @@ fun NeumorphicSlideToConnect(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .padding(end = 52.dp)
+                            .padding(end = 56.dp)
                             .graphicsLayer { alpha = labelAlpha },
                     ) {
                         Icon(
@@ -646,12 +648,12 @@ fun NeumorphicSlideToConnect(
                             tint = statusColors.connected.copy(alpha = pulseAlpha),
                             modifier = Modifier.size(18.dp),
                         )
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(10.dp))
                         Text(
-                            text = "Slide left to Disconnect",
+                            text = s.slideToDisconnect,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.4.sp,
+                                letterSpacing = 0.3.sp,
                             ),
                             color = statusColors.connected,
                         )
@@ -665,7 +667,10 @@ fun NeumorphicSlideToConnect(
 
         Box(
             modifier = Modifier
-                .offset { IntOffset(currentOffsetPx.roundToInt(), 0) }
+                .offset {
+                    val xPx = if (s.isRtl) -currentOffsetPx.roundToInt() else currentOffsetPx.roundToInt()
+                    IntOffset(xPx, 0)
+                }
                 .padding(trackPadding)
                 .size(thumbSize)
                 .neumorphicRaised(

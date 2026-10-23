@@ -22,6 +22,7 @@ import com.vauth.foxyvpn.ui.screens.NetworkToolsScreen
 import com.vauth.foxyvpn.ui.screens.ServerListScreen
 import com.vauth.foxyvpn.ui.screens.SettingsScreen
 import com.vauth.foxyvpn.ui.screens.SplashScreen
+import com.vauth.foxyvpn.ui.theme.LanguageController
 import com.vauth.foxyvpn.ui.theme.ThemeController
 
 object FoxyRoutes {
@@ -40,6 +41,7 @@ fun FoxyNavGraph(
     navController: NavHostController = rememberNavController(),
     app: FoxyVpnApp,
     themeController: ThemeController,
+    languageController: LanguageController,
     onRequestConnect: () -> Unit,
     onDisconnect: () -> Unit,
 ) {
@@ -94,6 +96,7 @@ fun FoxyNavGraph(
             HomeScreen(
                 app = app,
                 themeController = themeController,
+                languageController = languageController,
                 onRequestConnect = onRequestConnect,
                 onDisconnect = onDisconnect,
                 onOpenServers = { navController.navigate(FoxyRoutes.SERVERS) },
@@ -112,6 +115,8 @@ fun FoxyNavGraph(
         composable(FoxyRoutes.SETTINGS) {
             SettingsScreen(
                 settingsStore = app.settingsStore,
+                themeController = themeController,
+                languageController = languageController,
                 onOpenLogs = { navController.navigate(FoxyRoutes.LOGS) },
                 onOpenTools = { tab -> navController.navigate(FoxyRoutes.tools(tab)) },
                 onSignOut = {

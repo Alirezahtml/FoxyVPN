@@ -11,7 +11,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -34,17 +33,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.NetworkCheck
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -87,12 +82,14 @@ import com.vauth.foxyvpn.data.model.ProxyCandidate
 import com.vauth.foxyvpn.data.model.emojiFlag
 import com.vauth.foxyvpn.ui.theme.AnimatedOdometerText
 import com.vauth.foxyvpn.ui.theme.AnimatedTrafficEqualizer
+import com.vauth.foxyvpn.ui.theme.FoxyStrings
 import com.vauth.foxyvpn.ui.theme.LocalFoxyStatusColors
 import com.vauth.foxyvpn.ui.theme.NeumorphicButton
 import com.vauth.foxyvpn.ui.theme.NeumorphicCard
 import com.vauth.foxyvpn.ui.theme.NeumorphicIconButton
 import com.vauth.foxyvpn.ui.theme.NeumorphicRadarPulse
 import com.vauth.foxyvpn.ui.theme.NeumorphicSpeedometerGauge
+import com.vauth.foxyvpn.ui.theme.currentFoxyStrings
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicSunken
 import com.vauth.foxyvpn.ui.theme.neumorphicTouchBounce
@@ -118,15 +115,30 @@ import kotlin.math.roundToInt
 
 enum class NetworkToolTab(
     val id: Int,
-    val title: String,
-    val persianSubtitle: String,
     val icon: ImageVector,
 ) {
-    SPEED_TEST(0, "Speed Test", "تست سرعت دانلود و آپلود", Icons.Filled.Speed),
-    LEAK_INSPECTOR(1, "IP & Leak Test", "تست نشتی DNS و بررسی IP", Icons.Filled.Security),
-    SMART_SERVER(2, "Smart Scanner", "یافتن سریع‌ترین سرور", Icons.Filled.Explore),
-    WATCHDOG(3, "Keep-Alive Guard", "نگهبان اتصال و ضدقطع‌شدن", Icons.Filled.Favorite),
-    MTU_OPTIMIZER(4, "MTU & DPI Lab", "بهینه‌ساز MTU و فرگمنت", Icons.Filled.Tune),
+    SPEED_TEST(0, Icons.Filled.Speed),
+    LEAK_INSPECTOR(1, Icons.Filled.Security),
+    SMART_SERVER(2, Icons.Filled.Explore),
+    WATCHDOG(3, Icons.Filled.Favorite),
+    MTU_OPTIMIZER(4, Icons.Filled.Tune),
+    ;
+
+    fun localizedTitle(s: FoxyStrings): String = when (this) {
+        SPEED_TEST -> s.toolSpeedTitle
+        LEAK_INSPECTOR -> s.toolLeakTitle
+        SMART_SERVER -> s.toolScannerTitle
+        WATCHDOG -> s.toolWatchdogTitle
+        MTU_OPTIMIZER -> s.toolMtuTitle
+    }
+
+    fun localizedSubtitle(s: FoxyStrings): String = when (this) {
+        SPEED_TEST -> s.toolSpeedSubtitle
+        LEAK_INSPECTOR -> s.toolLeakSubtitle
+        SMART_SERVER -> s.toolScannerSubtitle
+        WATCHDOG -> s.toolWatchdogSubtitle
+        MTU_OPTIMIZER -> s.toolMtuSubtitle
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,6 +150,7 @@ fun NetworkToolsScreen(
     onBack: () -> Unit,
 ) {
     val neu = currentNeumorphicColors
+    val s = currentFoxyStrings
     val haptics = LocalHapticFeedback.current
     var selectedTab by remember {
         mutableStateOf(NetworkToolTab.entries.firstOrNull { it.id == initialTab } ?: NetworkToolTab.SPEED_TEST)
@@ -148,14 +161,15 @@ fun NetworkToolsScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
+                    Column(modifier = Modifier.padding(horizontal = 4.dp)) {
                         Text(
-                            "Network & Security Toolkit",
+                            s.toolkitScreenTitle,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = neu.textPrimary,
                         )
+                        Spacer(Modifier.height(2.dp))
                         Text(
-                            selectedTab.persianSubtitle,
+                            selectedTab.localizedSubtitle(s),
                             style = MaterialTheme.typography.labelSmall,
                             color = neu.accent,
                         )
@@ -163,13 +177,13 @@ fun NetworkToolsScreen(
                 },
                 navigationIcon = {
                     NeumorphicIconButton(
-                        size = 38.dp,
+                        size = 40.dp,
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp),
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = s.back,
                             tint = neu.textPrimary,
                             modifier = Modifier.size(18.dp),
                         )
@@ -183,21 +197,22 @@ fun NetworkToolsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Horizontal Neumorphic Tool Selector Bar
+            // Horizontal Neumorphic Tool Selector Bar (Spacious Pills)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 600.dp)
                     .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 NetworkToolTab.entries.forEachIndexed { idx, tab ->
                     val isSelected = selectedTab == tab
-                    val pillShape = RoundedCornerShape(16.dp)
+                    val pillShape = RoundedCornerShape(18.dp)
+                    val title = tab.localizedTitle(s)
                     Box(
                         modifier = Modifier
                             .staggeredEntrance(idx, delayPerItemMs = 45)
@@ -208,20 +223,20 @@ fun NetworkToolsScreen(
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 selectedTab = tab
                             }
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                            .padding(horizontal = 18.dp, vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = tab.icon,
-                                contentDescription = tab.title,
+                                contentDescription = title,
                                 tint = if (isSelected) Color.White else neu.accent,
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(18.dp),
                             )
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text(
-                                text = tab.title,
-                                style = MaterialTheme.typography.labelMedium.copy(
+                                text = title,
+                                style = MaterialTheme.typography.labelLarge.copy(
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                                 ),
                                 color = if (isSelected) Color.White else neu.textPrimary,
@@ -231,7 +246,7 @@ fun NetworkToolsScreen(
                 }
             }
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
 
             Box(
                 modifier = Modifier
@@ -281,21 +296,44 @@ private fun buildTunnelAwareHttpClient(
 // ============================================================================
 // TOOL 1: REAL SPEED TEST (PING, JITTER, DOWNLOAD, UPLOAD)
 // ============================================================================
+private enum class SpeedTestStage {
+    READY,
+    PING,
+    DOWNLOAD_TUNNEL,
+    DOWNLOAD_DIRECT,
+    UPLOAD_TUNNEL,
+    UPLOAD_DIRECT,
+    DONE_TUNNEL,
+    DONE_DIRECT,
+}
+
 @Composable
 private fun SpeedTestToolPanel(app: FoxyVpnApp) {
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
+    val s = currentFoxyStrings
     val scope = rememberCoroutineScope()
     val state by FoxyVpnService.state.collectAsState()
     val isConnected = state == ConnectionState.CONNECTED
 
     var isRunning by remember { mutableStateOf(false) }
-    var stageLabel by remember { mutableStateOf("Ready to measure real network throughput") }
+    var stage by remember { mutableStateOf(SpeedTestStage.READY) }
     var currentGaugeMbps by remember { mutableFloatStateOf(0f) }
     var downloadMbps by remember { mutableStateOf<Float?>(null) }
     var uploadMbps by remember { mutableStateOf<Float?>(null) }
     var pingMs by remember { mutableStateOf<Int?>(null) }
     var jitterMs by remember { mutableStateOf<Int?>(null) }
+
+    val stageLabel = when (stage) {
+        SpeedTestStage.READY -> s.speedReadyStage
+        SpeedTestStage.PING -> s.speedMeasuringPingStage
+        SpeedTestStage.DOWNLOAD_TUNNEL -> s.speedTestingTunnelDlStage
+        SpeedTestStage.DOWNLOAD_DIRECT -> s.speedTestingDirectDlStage
+        SpeedTestStage.UPLOAD_TUNNEL -> s.speedTestingTunnelUlStage
+        SpeedTestStage.UPLOAD_DIRECT -> s.speedTestingDirectUlStage
+        SpeedTestStage.DONE_TUNNEL -> s.speedDoneTunnelStage
+        SpeedTestStage.DONE_DIRECT -> s.speedDoneDirectStage
+    }
 
     fun startSpeedTest() {
         if (isRunning) return
@@ -309,7 +347,7 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
         scope.launch {
             val socksPort = app.settingsStore.socksPort
             // Step 1: Ping & Jitter
-            stageLabel = "Measuring Latency & Jitter (5 samples)…"
+            stage = SpeedTestStage.PING
             val endpoint = FoxyVpnService.connectedEndpoint.value
             val targetHost = endpoint?.first ?: app.proxyStateStore.load()?.host ?: "1.1.1.1"
             val targetPort = endpoint?.second ?: app.proxyStateStore.load()?.port ?: 443
@@ -328,7 +366,7 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
             }
 
             // Step 2: Download Benchmark
-            stageLabel = if (isConnected) "Testing Encrypted Tunnel Download…" else "Testing Direct Download…"
+            stage = if (isConnected) SpeedTestStage.DOWNLOAD_TUNNEL else SpeedTestStage.DOWNLOAD_DIRECT
             val dlClient = buildTunnelAwareHttpClient(isConnected, socksPort, timeoutSec = 15L)
             try {
                 val dlUrls = listOf(
@@ -375,11 +413,11 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
 
             delay(350)
 
-            // Step 3: Upload Benchmark (100% Real Socket/HTTP Upload Stream)
-            stageLabel = if (isConnected) "Testing Encrypted Tunnel Upload…" else "Testing Direct Upload…"
+            // Step 3: Upload Benchmark
+            stage = if (isConnected) SpeedTestStage.UPLOAD_TUNNEL else SpeedTestStage.UPLOAD_DIRECT
             val ulClient = buildTunnelAwareHttpClient(isConnected, socksPort, timeoutSec = 12L)
             try {
-                val payloadSize = 512 * 1024 // 512 KB real upload buffer
+                val payloadSize = 512 * 1024
                 val payload = ByteArray(payloadSize) { (it % 251).toByte() }
                 val uploadEndpoints = listOf(
                     "https://speed.cloudflare.com/__up",
@@ -415,7 +453,7 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
                 }
             }
 
-            stageLabel = if (isConnected) "Benchmark completed through Encrypted VPN Tunnel" else "Benchmark completed on Direct Network"
+            stage = if (isConnected) SpeedTestStage.DONE_TUNNEL else SpeedTestStage.DONE_DIRECT
             isRunning = false
         }
     }
@@ -424,7 +462,7 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         NeumorphicCard(
@@ -436,7 +474,7 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(
@@ -449,22 +487,22 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
                             .clip(CircleShape)
                             .background(if (isConnected) statusColors.connected else statusColors.connecting),
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(10.dp))
                     Text(
-                        text = if (isConnected) "TUNNEL MODE (ROUTED VIA SOCKS5)" else "DIRECT ISP MODE (VPN DISCONNECTED)",
+                        text = if (isConnected) s.speedModeTunnel else s.speedModeDirect,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
+                            letterSpacing = if (s.isRtl) 0.sp else 0.8.sp,
                         ),
                         color = if (isConnected) statusColors.connected else neu.textSecondary,
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
 
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(220.dp),
+                    modifier = Modifier.size(224.dp),
                 ) {
                     NeumorphicSpeedometerGauge(
                         speedMbps = currentGaugeMbps,
@@ -494,55 +532,58 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
                     }
                 }
 
+                Spacer(Modifier.height(6.dp))
+
                 Text(
                     text = stageLabel,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = neu.textSecondary,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp),
                 )
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(20.dp))
 
                 // 4-Metric Grid (Download, Upload, Ping, Jitter)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SpeedMetricTile(
-                        label = "DOWNLOAD",
+                        label = s.speedDownloadLabel,
                         value = downloadMbps?.let { String.format(Locale.US, "%.1f Mbps", it) } ?: "—",
                         accent = statusColors.connected,
                         modifier = Modifier.weight(1f),
                     )
                     SpeedMetricTile(
-                        label = "UPLOAD",
+                        label = s.speedUploadLabel,
                         value = uploadMbps?.let { String.format(Locale.US, "%.1f Mbps", it) } ?: "—",
                         accent = neu.accent,
                         modifier = Modifier.weight(1f),
                     )
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SpeedMetricTile(
-                        label = "PING RTT",
+                        label = s.speedPingLabel,
                         value = pingMs?.let { "$it ms" } ?: "—",
                         accent = statusColors.connecting,
                         modifier = Modifier.weight(1f),
                     )
                     SpeedMetricTile(
-                        label = "JITTER",
+                        label = s.speedJitterLabel,
                         value = jitterMs?.let { "$it ms" } ?: "—",
                         accent = neu.textPrimary,
                         modifier = Modifier.weight(1f),
                     )
                 }
 
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(22.dp))
 
                 NeumorphicButton(
                     onClick = ::startSpeedTest,
@@ -559,16 +600,16 @@ private fun SpeedTestToolPanel(app: FoxyVpnApp) {
                             color = Color.White,
                         )
                         Spacer(Modifier.width(10.dp))
-                        Text("Running Live Speed Test…", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(s.speedRunningButton, color = Color.White, fontWeight = FontWeight.Bold)
                     } else {
-                        Icon(Icons.Filled.Speed, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Start Real Speed Test (شروع تست سرعت)", color = Color.White, fontWeight = FontWeight.Bold)
+                        Icon(Icons.Filled.Speed, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text(s.speedStartButton, color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }
 
@@ -580,27 +621,28 @@ private fun SpeedMetricTile(
     modifier: Modifier = Modifier,
 ) {
     val neu = currentNeumorphicColors
-    val shape = RoundedCornerShape(14.dp)
+    val s = currentFoxyStrings
+    val shape = RoundedCornerShape(16.dp)
     Box(
         modifier = modifier
             .neumorphicSunken(
                 shape = shape,
-                cornerRadius = 14.dp,
+                cornerRadius = 16.dp,
                 depth = 3.dp,
                 surfaceColor = neu.surfaceElevated,
             )
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Column {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp,
+                    letterSpacing = if (s.isRtl) 0.sp else 0.7.sp,
                 ),
                 color = neu.textSecondary,
             )
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
@@ -611,7 +653,7 @@ private fun SpeedMetricTile(
 }
 
 // ============================================================================
-// TOOL 2: IP, DNS & LEAK INSPECTOR (تست نشتی و ایپی)
+// TOOL 2: IP, DNS & LEAK INSPECTOR
 // ============================================================================
 private data class CloudflareTraceReport(
     val ip: String,
@@ -628,6 +670,7 @@ private data class CloudflareTraceReport(
 private fun LeakInspectorToolPanel(app: FoxyVpnApp) {
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
+    val s = currentFoxyStrings
     val scope = rememberCoroutineScope()
     val state by FoxyVpnService.state.collectAsState()
     val isConnected = state == ConnectionState.CONNECTED
@@ -665,7 +708,7 @@ private fun LeakInspectorToolPanel(app: FoxyVpnApp) {
         scanError = null
         scope.launch {
             val socksPort = app.settingsStore.socksPort
-            // 1. Direct ISP trace (bypasses tunnel because app is excluded from TUN unless SOCKS proxy is set)
+            // 1. Direct ISP trace
             val directClient = buildTunnelAwareHttpClient(isVpnConnected = false, socksPort = socksPort, timeoutSec = 8L)
             try {
                 val res = withContext(Dispatchers.IO) {
@@ -699,7 +742,7 @@ private fun LeakInspectorToolPanel(app: FoxyVpnApp) {
                         }
                     }
                     res.onSuccess { tunnelTrace = it }
-                        .onFailure { scanError = "Tunnel trace failed: ${it.message}" }
+                        .onFailure { scanError = it.message }
                 } finally {
                     withContext(Dispatchers.IO) {
                         proxiedClient.dispatcher.executorService.shutdown()
@@ -755,7 +798,7 @@ private fun LeakInspectorToolPanel(app: FoxyVpnApp) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         NeumorphicCard(
@@ -767,18 +810,18 @@ private fun LeakInspectorToolPanel(app: FoxyVpnApp) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 NeumorphicRadarPulse(
                     color = if (isProtectedNoLeak) statusColors.connected else if (isConnected) statusColors.connecting else MaterialTheme.colorScheme.error,
                     isActive = isConnected,
                     isConnecting = isScanning,
-                    size = 110.dp,
+                    size = 116.dp,
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(66.dp)
                             .clip(CircleShape)
                             .background(
                                 if (isProtectedNoLeak) statusColors.connected.copy(alpha = 0.18f)
@@ -790,82 +833,82 @@ private fun LeakInspectorToolPanel(app: FoxyVpnApp) {
                             imageVector = if (isProtectedNoLeak) Icons.Filled.Security else Icons.Filled.Shield,
                             contentDescription = null,
                             tint = if (isProtectedNoLeak) statusColors.connected else MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(34.dp),
                         )
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Text(
                     text = when {
-                        isScanning -> "INSPECTING IP & DNS TUNNEL…"
-                        isProtectedNoLeak -> "ZERO LEAKS DETECTED • 100% MASKED"
-                        isConnected -> "TUNNEL ACTIVE • VERIFYING EXIT"
-                        else -> "VPN DISCONNECTED • REAL IP EXPOSED"
+                        isScanning -> s.leakScanningTitle
+                        isProtectedNoLeak -> s.leakProtectedTitle
+                        isConnected -> s.leakVerifyingTitle
+                        else -> s.leakExposedTitle
                     },
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.8.sp,
+                        letterSpacing = if (s.isRtl) 0.sp else 0.7.sp,
                     ),
                     color = if (isProtectedNoLeak) statusColors.connected else if (isConnected) statusColors.connecting else MaterialTheme.colorScheme.error,
                     textAlign = TextAlign.Center,
                 )
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(18.dp))
 
                 // Side-by-side ISP IP vs Tunnel Exit IP
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SpeedMetricTile(
-                        label = "ISP DIRECT IP",
-                        value = directTrace?.let { "${it.ip} (${it.country})" } ?: "Checking…",
+                        label = s.leakDirectIpLabel,
+                        value = directTrace?.let { "${it.ip} (${it.country})" } ?: s.checking,
                         accent = neu.textPrimary,
                         modifier = Modifier.weight(1f),
                     )
                     SpeedMetricTile(
-                        label = "VPN EXIT IP",
+                        label = s.leakVpnIpLabel,
                         value = if (isConnected) {
-                            tunnelTrace?.let { "${it.ip} (${it.country})" } ?: "Probing…"
+                            tunnelTrace?.let { "${it.ip} (${it.country})" } ?: s.leakProbing
                         } else {
-                            "Not Connected"
+                            s.leakNotConnected
                         },
                         accent = if (isConnected) statusColors.connected else MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f),
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(18.dp))
 
                 // Detailed Security & Edge Telemetry Rows
                 val activeTrace = tunnelTrace ?: directTrace
-                InspectorDetailRow("Cloudflare Edge Datacenter (Colo)", activeTrace?.colo ?: "—")
-                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 6.dp))
-                InspectorDetailRow("TLS / HTTP Protocol", "${activeTrace?.tlsVersion ?: "—"} / ${activeTrace?.httpVersion ?: "—"}")
-                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 6.dp))
-                InspectorDetailRow("Encrypted SNI Status", activeTrace?.sniStatus?.uppercase() ?: "—")
-                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 6.dp))
+                InspectorDetailRow(s.leakColoLabel, activeTrace?.colo ?: "—")
+                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 10.dp))
+                InspectorDetailRow(s.leakProtocolLabel, "${activeTrace?.tlsVersion ?: "—"} / ${activeTrace?.httpVersion ?: "—"}")
+                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 10.dp))
+                InspectorDetailRow(s.leakSniLabel, activeTrace?.sniStatus?.uppercase() ?: "—")
+                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 10.dp))
                 InspectorDetailRow(
-                    "DoH DNS Query Check",
+                    s.leakDohLabel,
                     if (dohLatencyMs != null) {
                         val ipPart = dohResolvedIp?.let { " ($it)" }.orEmpty()
-                        "Verified in ${dohLatencyMs}ms$ipPart"
-                    } else "Testing…",
+                        s.leakDohVerified(dohLatencyMs!!, ipPart)
+                    } else s.testing,
                 )
-                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 6.dp))
+                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 10.dp))
                 InspectorDetailRow(
-                    "IPv6 Leak Protection",
-                    if (isConnected) "Protected (Sinkholed via fd00::/128)" else "Inactive (Direct Network)",
+                    s.leakIpv6Label,
+                    if (isConnected) s.leakIpv6Protected else s.leakIpv6Inactive,
                 )
 
                 scanError?.let {
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(10.dp))
                     Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(22.dp))
 
                 NeumorphicButton(
                     onClick = ::runLeakAudit,
@@ -875,17 +918,17 @@ private fun LeakInspectorToolPanel(app: FoxyVpnApp) {
                         .fillMaxWidth()
                         .neumorphicTouchBounce(),
                 ) {
-                    Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
                     Text(
-                        if (isScanning) "Scanning IP & DNS…" else "Re-Scan IP & Leak Status (بررسی مجدد نشتی)",
+                        if (isScanning) s.leakScanningButton else s.leakRescanButton,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                     )
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }
 
@@ -893,18 +936,22 @@ private fun LeakInspectorToolPanel(app: FoxyVpnApp) {
 private fun InspectorDetailRow(label: String, value: String) {
     val neu = currentNeumorphicColors
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = neu.textSecondary,
+            modifier = Modifier.weight(1f),
         )
+        Spacer(Modifier.width(12.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall.copy(
+            style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
             ),
@@ -914,7 +961,7 @@ private fun InspectorDetailRow(label: String, value: String) {
 }
 
 // ============================================================================
-// TOOL 3: SMART FASTEST SERVER FINDER (اسکنر هوشمند سریع‌ترین سرور)
+// TOOL 3: SMART FASTEST SERVER FINDER
 // ============================================================================
 private data class BenchmarkedServer(
     val candidate: ProxyCandidate,
@@ -928,12 +975,13 @@ private fun SmartServerScannerPanel(
 ) {
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
+    val s = currentFoxyStrings
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
     var isScanning by remember { mutableStateOf(false) }
     var progress by remember { mutableFloatStateOf(0f) }
-    var statusText by remember { mutableStateOf("Scan all available servers to find the lowest-latency edge") }
+    var statusText by remember(s.isRtl) { mutableStateOf(s.scannerInitialSubtitle) }
     val results = remember { mutableStateListOf<BenchmarkedServer>() }
 
     fun startServerBenchmark() {
@@ -943,7 +991,7 @@ private fun SmartServerScannerPanel(
         results.clear()
 
         scope.launch {
-            statusText = "Loading server catalog…"
+            statusText = s.scannerLoadingCatalog
             val countries = withContext(Dispatchers.IO) {
                 val cached = app.serverListClient.loadCachedCountries()
                 cached.ifEmpty {
@@ -961,13 +1009,13 @@ private fun SmartServerScannerPanel(
                 .take(18)
 
             if (candidates.isEmpty()) {
-                statusText = "No servers found in cache. Open Locations first to refresh."
+                statusText = s.scannerEmptyCatalog
                 isScanning = false
                 return@launch
             }
 
             candidates.forEachIndexed { idx, candidate ->
-                statusText = "Probing ${candidate.countryName.ifBlank { candidate.countryCode }} (${candidate.cityCode})…"
+                statusText = s.scannerProbingServer(candidate.countryName.ifBlank { candidate.countryCode }, candidate.cityCode)
                 val rtt = PingUtil.measureTcpLatencyMs(candidate.host, candidate.port)
                 if (rtt != null) {
                     results.add(BenchmarkedServer(candidate, rtt))
@@ -977,9 +1025,9 @@ private fun SmartServerScannerPanel(
             }
 
             statusText = if (results.isNotEmpty()) {
-                "Optimal server found: ${results.first().candidate.countryName} (${results.first().latencyMs} ms)"
+                s.scannerOptimalFound(results.first().candidate.countryName.ifBlank { results.first().candidate.countryCode }, results.first().latencyMs)
             } else {
-                "Scan finished, but TCP probes timed out on current network."
+                s.scannerTimeoutMessage
             }
             isScanning = false
         }
@@ -989,7 +1037,7 @@ private fun SmartServerScannerPanel(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         NeumorphicCard(
@@ -1001,18 +1049,18 @@ private fun SmartServerScannerPanel(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 NeumorphicRadarPulse(
                     color = neu.accent,
                     isActive = results.isNotEmpty(),
                     isConnecting = isScanning,
-                    size = 104.dp,
+                    size = 110.dp,
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(60.dp)
+                            .size(64.dp)
                             .clip(CircleShape)
                             .background(neu.accent.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center,
@@ -1021,30 +1069,32 @@ private fun SmartServerScannerPanel(
                             imageVector = Icons.Filled.Explore,
                             contentDescription = null,
                             tint = neu.accent,
-                            modifier = Modifier.size(30.dp),
+                            modifier = Modifier.size(32.dp),
                         )
                     }
                 }
 
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(12.dp))
 
                 Text(
-                    text = "SMART MULTI-EDGE LATENCY SCANNER",
-                    style = MaterialTheme.typography.labelMedium.copy(
+                    text = s.scannerHeaderTitle,
+                    style = MaterialTheme.typography.labelLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.sp,
+                        letterSpacing = if (s.isRtl) 0.sp else 0.8.sp,
                     ),
                     color = neu.textPrimary,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = neu.textSecondary,
                     textAlign = TextAlign.Center,
                 )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = neu.textSecondary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
 
                 val animatedProgress by animateFloatAsState(
                     targetValue = progress,
@@ -1052,14 +1102,14 @@ private fun SmartServerScannerPanel(
                     label = "scanner-progress",
                 )
                 if (isScanning || progress > 0f) {
-                    val barShape = RoundedCornerShape(6.dp)
+                    val barShape = RoundedCornerShape(7.dp)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(10.dp)
+                            .height(12.dp)
                             .neumorphicSunken(
                                 shape = barShape,
-                                cornerRadius = 6.dp,
+                                cornerRadius = 7.dp,
                                 depth = 2.dp,
                                 surfaceColor = neu.surfaceElevated,
                             ),
@@ -1072,7 +1122,7 @@ private fun SmartServerScannerPanel(
                                 .background(statusColors.connected),
                         )
                     }
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(18.dp))
                 }
 
                 NeumorphicButton(
@@ -1083,10 +1133,10 @@ private fun SmartServerScannerPanel(
                         .fillMaxWidth()
                         .neumorphicTouchBounce(),
                 ) {
-                    Icon(Icons.Filled.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Filled.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
                     Text(
-                        if (isScanning) "Scanning Edge Servers…" else "Scan All Locations (یافتن سریع‌ترین سرور)",
+                        if (isScanning) s.scannerRunningButton else s.scannerStartButton,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                     )
@@ -1106,45 +1156,46 @@ private fun SmartServerScannerPanel(
                             .fillMaxWidth()
                             .neumorphicTouchBounce(),
                     ) {
-                        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
+                        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
                         Text(
-                            "Connect to #1 Fastest (${best.candidate.countryCode} • ${best.latencyMs}ms)",
+                            s.scannerConnectBestButton(best.candidate.countryCode, best.latencyMs),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                         )
                     }
 
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(18.dp))
 
                     results.take(8).forEachIndexed { idx, item ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 5.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .padding(vertical = 6.dp)
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(neu.surfaceElevated)
                                 .clickable {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                     app.proxyStateStore.save(item.candidate)
                                 }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = "#${idx + 1}",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
                                 color = if (idx == 0) statusColors.connected else neu.textSecondary,
-                                modifier = Modifier.width(28.dp),
+                                modifier = Modifier.width(32.dp),
                             )
-                            Text(item.candidate.emojiFlag, fontSize = 18.sp)
-                            Spacer(Modifier.width(10.dp))
+                            Text(item.candidate.emojiFlag, fontSize = 20.sp)
+                            Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "${item.candidate.countryName.ifBlank { item.candidate.countryCode }} • ${item.candidate.cityCode}",
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                     color = neu.textPrimary,
                                 )
+                                Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = item.candidate.host,
                                     style = MaterialTheme.typography.labelSmall,
@@ -1153,7 +1204,7 @@ private fun SmartServerScannerPanel(
                             }
                             Text(
                                 text = "${item.latencyMs} ms",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.ExtraBold),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
                                 color = statusColors.connected,
                             )
                         }
@@ -1161,17 +1212,18 @@ private fun SmartServerScannerPanel(
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }
 
 // ============================================================================
-// TOOL 4: CONNECTION WATCHDOG & KEEP-ALIVE (نگهبان اتصال و ضدقطع‌شدن)
+// TOOL 4: CONNECTION WATCHDOG & KEEP-ALIVE
 // ============================================================================
 @Composable
 private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
+    val s = currentFoxyStrings
     val scope = rememberCoroutineScope()
     val state by FoxyVpnService.state.collectAsState()
     val pulseCount by FoxyVpnService.keepAlivePulseCount.collectAsState()
@@ -1189,7 +1241,7 @@ private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         NeumorphicCard(
@@ -1201,7 +1253,7 @@ private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(
@@ -1213,57 +1265,61 @@ private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
                         color = statusColors.connected,
                         barCount = 5,
                     )
-                    Spacer(Modifier.width(10.dp))
+                    Spacer(Modifier.width(12.dp))
                     Text(
-                        text = "ANTI-DROP WATCHDOG & HEARTBEAT",
-                        style = MaterialTheme.typography.labelMedium.copy(
+                        text = s.watchdogHeaderTitle,
+                        style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            letterSpacing = 1.sp,
+                            letterSpacing = if (s.isRtl) 0.sp else 0.8.sp,
                         ),
                         color = neu.textPrimary,
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(18.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SpeedMetricTile(
-                        label = "HEARTBEAT PULSES",
-                        value = "$pulseCount sent",
+                        label = s.watchdogPulsesLabel,
+                        value = s.watchdogPulsesValue(pulseCount),
                         accent = statusColors.connected,
                         modifier = Modifier.weight(1f),
                     )
                     SpeedMetricTile(
-                        label = "LAST PULSE",
+                        label = s.watchdogLastPulseLabel,
                         value = lastPulseAt?.let { timeFormat.format(Date(it)) } ?: "—",
                         accent = neu.accent,
                         modifier = Modifier.weight(1f),
                     )
                 }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
 
                 // Toggle 1: Auto-Reconnect Watchdog
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "Auto-Reconnect Watchdog (اتصال مجدد خودکار)",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            s.watchdogAutoReconnectTitle,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = neu.textPrimary,
                         )
+                        Spacer(Modifier.height(4.dp))
                         Text(
-                            "Automatically rotates edges and redials H2 tunnel on drop",
+                            s.watchdogAutoReconnectSub,
                             style = MaterialTheme.typography.bodySmall,
                             color = neu.textSecondary,
                         )
                     }
+                    Spacer(Modifier.width(14.dp))
                     Switch(
                         checked = autoReconnectEnabled,
                         onCheckedChange = {
@@ -1277,26 +1333,30 @@ private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
                     )
                 }
 
-                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 12.dp))
+                HorizontalDivider(color = neu.textSecondary.copy(alpha = 0.12f), modifier = Modifier.padding(vertical = 14.dp))
 
                 // Toggle 2: Keep-Alive Socket Heartbeat
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            "Active Keep-Alive Heartbeat (تثبیت‌کننده پینگ)",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            s.watchdogKeepAliveTitle,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = neu.textPrimary,
                         )
+                        Spacer(Modifier.height(4.dp))
                         Text(
-                            "Prevents NAT/CGNAT idle timeouts on mobile & Wi-Fi",
+                            s.watchdogKeepAliveSub,
                             style = MaterialTheme.typography.bodySmall,
                             color = neu.textSecondary,
                         )
                     }
+                    Spacer(Modifier.width(14.dp))
                     Switch(
                         checked = keepAliveEnabled,
                         onCheckedChange = {
@@ -1310,19 +1370,19 @@ private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(18.dp))
 
                 // Interval Selector Pills
                 Text(
-                    "Heartbeat Probe Interval",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    s.watchdogIntervalLabel,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                     color = neu.textSecondary,
                     modifier = Modifier.align(Alignment.Start),
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     listOf(10, 20, 30, 60).forEach { sec ->
                         val selected = keepAliveIntervalSec == sec
@@ -1330,25 +1390,25 @@ private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
                             modifier = Modifier
                                 .weight(1f)
                                 .neumorphicTouchBounce()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(if (selected) neu.accent else neu.surfaceElevated)
                                 .clickable {
                                     keepAliveIntervalSec = sec
                                     app.settingsStore.keepAliveIntervalSec = sec
                                 }
-                                .padding(vertical = 10.dp),
+                                .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = "${sec}s",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                text = s.watchdogSecondsUnit(sec),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                                 color = if (selected) Color.White else neu.textPrimary,
                             )
                         }
                     }
                 }
 
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(22.dp))
 
                 NeumorphicButton(
                     onClick = {
@@ -1367,13 +1427,13 @@ private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
                         .fillMaxWidth()
                         .neumorphicTouchBounce(),
                 ) {
-                    Icon(Icons.Filled.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Filled.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
                     Text(
                         text = when {
-                            state != ConnectionState.CONNECTED -> "Connect VPN to Send Heartbeat"
-                            isProbingNow -> "Sending Keep-Alive Pulse…"
-                            else -> "Send Immediate Heartbeat (${pingMs?.let { "${it}ms" } ?: "Ready"})"
+                            state != ConnectionState.CONNECTED -> s.watchdogConnectFirstButton
+                            isProbingNow -> s.watchdogSendingPulseButton
+                            else -> s.watchdogSendNowButton(pingMs?.let { "${it}ms" } ?: s.islandReady)
                         },
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
@@ -1381,12 +1441,12 @@ private fun WatchdogKeepAlivePanel(app: FoxyVpnApp) {
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }
 
 // ============================================================================
-// TOOL 5: SMART MTU & DPI FRAGMENTATION OPTIMIZER (بهینه‌ساز MTU و فرگمنت)
+// TOOL 5: SMART MTU & DPI FRAGMENTATION OPTIMIZER
 // ============================================================================
 private data class DpiOptimizationCandidate(
     val mtu: Int,
@@ -1441,7 +1501,6 @@ private suspend fun measureRealTlsFragmentedProbeMs(
             val sslSocket = sslFactory.createSocket(sock, host, port, true) as javax.net.ssl.SSLSocket
             sslSocket.use { tls ->
                 tls.startHandshake()
-                // Send a real HTTP HEAD padded to test MTU frame delivery over TLS
                 val padLen = (mtuCandidate - 220).coerceIn(64, 1300)
                 val padHeader = "X".repeat(padLen)
                 val reqBytes = "HEAD / HTTP/1.1\r\nHost: $host\r\nX-Mtu-Probe: $padHeader\r\nConnection: close\r\n\r\n"
@@ -1460,13 +1519,14 @@ private suspend fun measureRealTlsFragmentedProbeMs(
 private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
+    val s = currentFoxyStrings
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
 
     var currentMtu by remember { mutableIntStateOf(app.settingsStore.mtu) }
     var currentSplit by remember { mutableStateOf(app.settingsStore.tlsSplitMode) }
     var isTesting by remember { mutableStateOf(false) }
-    var statusMessage by remember { mutableStateOf("Test MTU packet sizes & TLS SNI fragmentation on your ISP") }
+    var statusMessage by remember(s.isRtl) { mutableStateOf(s.mtuInitialStatus) }
     var recommended by remember { mutableStateOf<DpiOptimizationCandidate?>(null) }
     val testedRows = remember { mutableStateListOf<DpiOptimizationCandidate>() }
 
@@ -1493,7 +1553,7 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
             )
 
             for ((mtuCandidate, splitCandidate) in combos) {
-                statusMessage = "Probing TLS Handshake: MTU $mtuCandidate + ${splitCandidate.label}…"
+                statusMessage = s.mtuProbingStatus(mtuCandidate, splitCandidate.localizedLabel(s.isRtl))
                 val rtt = measureRealTlsFragmentedProbeMs(
                     host = targetHost,
                     port = targetPort,
@@ -1514,8 +1574,8 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
 
             recommended = testedRows.firstOrNull()
             statusMessage = recommended?.let {
-                "Optimal profile verified: MTU ${it.mtu} + ${it.splitMode.label} (${it.rttMs} ms TLS RTT)"
-            } ?: "TLS probe timed out on current network"
+                s.mtuOptimalFoundStatus(it.mtu, it.splitMode.localizedLabel(s.isRtl), it.rttMs)
+            } ?: s.mtuTimeoutStatus
             isTesting = false
         }
     }
@@ -1524,7 +1584,7 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         NeumorphicCard(
@@ -1536,37 +1596,38 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SpeedMetricTile(
-                        label = "ACTIVE MTU",
-                        value = "$currentMtu bytes",
+                        label = s.mtuActiveLabel,
+                        value = s.mtuBytesValue(currentMtu),
                         accent = neu.accent,
                         modifier = Modifier.weight(1f),
                     )
                     SpeedMetricTile(
-                        label = "TLS FRAGMENT",
-                        value = currentSplit.label,
+                        label = s.mtuFragmentLabel,
+                        value = currentSplit.localizedLabel(s.isRtl),
                         accent = statusColors.connected,
                         modifier = Modifier.weight(1f),
                     )
                 }
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
 
                 Text(
                     text = statusMessage,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = neu.textSecondary,
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 8.dp),
                 )
 
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(18.dp))
 
                 NeumorphicButton(
                     onClick = ::runOptimizer,
@@ -1576,10 +1637,10 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
                         .fillMaxWidth()
                         .neumorphicTouchBounce(),
                 ) {
-                    Icon(Icons.Filled.Tune, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Filled.Tune, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
                     Text(
-                        if (isTesting) "Probing MTU & TLS Profiles…" else "Find Best MTU & Anti-DPI Profile (بهینه‌سازی هوشمند)",
+                        if (isTesting) s.mtuProbingButton else s.mtuFindBestButton,
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
                     )
@@ -1593,7 +1654,7 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
                     val best = recommended
                     if (best != null) {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            Spacer(Modifier.height(14.dp))
+                            Spacer(Modifier.height(16.dp))
                             NeumorphicButton(
                                 onClick = {
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -1601,17 +1662,17 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
                                     app.settingsStore.tlsSplitMode = best.splitMode
                                     currentMtu = best.mtu
                                     currentSplit = best.splitMode
-                                    statusMessage = "Applied MTU ${best.mtu} & TLS ${best.splitMode.label}!"
+                                    statusMessage = s.mtuAppliedStatus(best.mtu, best.splitMode.localizedLabel(s.isRtl))
                                 },
                                 accentColor = statusColors.connected,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .neumorphicTouchBounce(),
                             ) {
-                                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
+                                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(10.dp))
                                 Text(
-                                    "Apply Optimal (MTU ${best.mtu} • ${best.splitMode.label})",
+                                    s.mtuApplyBestButton(best.mtu, best.splitMode.localizedLabel(s.isRtl)),
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold,
                                 )
@@ -1621,13 +1682,13 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
                 }
 
                 if (testedRows.isNotEmpty()) {
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(18.dp))
                     testedRows.forEachIndexed { idx, row ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .padding(vertical = 5.dp)
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(neu.surfaceElevated)
                                 .clickable {
                                     app.settingsStore.mtu = row.mtu
@@ -1635,18 +1696,18 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
                                     currentMtu = row.mtu
                                     currentSplit = row.splitMode
                                 }
-                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                text = "MTU ${row.mtu} • TLS ${row.splitMode.label}",
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                text = "MTU ${row.mtu} • ${row.splitMode.localizedLabel(s.isRtl)}",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = if (idx == 0) statusColors.connected else neu.textPrimary,
                             )
                             Text(
                                 text = "${row.rttMs} ms",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.ExtraBold),
                                 color = if (idx == 0) statusColors.connected else neu.textSecondary,
                             )
                         }
@@ -1654,6 +1715,6 @@ private fun MtuDpiOptimizerPanel(app: FoxyVpnApp) {
                 }
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
     }
 }

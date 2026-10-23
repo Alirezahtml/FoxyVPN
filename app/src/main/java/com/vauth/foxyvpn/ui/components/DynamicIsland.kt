@@ -72,6 +72,7 @@ import com.vauth.foxyvpn.data.model.emojiFlag
 import com.vauth.foxyvpn.ui.theme.LocalFoxyStatusColors
 import com.vauth.foxyvpn.ui.theme.LocalNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.NeumorphicCard
+import com.vauth.foxyvpn.ui.theme.currentFoxyStrings
 import com.vauth.foxyvpn.ui.theme.currentNeumorphicColors
 import com.vauth.foxyvpn.ui.theme.neumorphicRaised
 import com.vauth.foxyvpn.vpn.FoxyVpnService
@@ -102,6 +103,7 @@ fun DynamicIsland(
 
     val neu = currentNeumorphicColors
     val statusColors = LocalFoxyStatusColors.current
+    val s = currentFoxyStrings
     val haptics = LocalHapticFeedback.current
 
     var isExpanded by remember { mutableStateOf(false) }
@@ -168,8 +170,8 @@ fun DynamicIsland(
 
         Box(
             modifier = Modifier
-                .widthIn(min = sizeConfig.widthDp.dp, max = if (isExpanded) 420.dp else (sizeConfig.widthDp + 64).dp)
-                .heightIn(min = if (isExpanded) 130.dp else sizeConfig.heightDp.dp)
+                .widthIn(min = sizeConfig.widthDp.dp, max = if (isExpanded) 440.dp else (sizeConfig.widthDp + 76).dp)
+                .heightIn(min = if (isExpanded) 142.dp else sizeConfig.heightDp.dp)
                 .animateContentSize(
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioLowBouncy,
@@ -201,7 +203,7 @@ fun DynamicIsland(
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     isExpanded = !isExpanded
                 }
-                .padding(horizontal = if (isExpanded) 18.dp else 14.dp, vertical = if (isExpanded) 16.dp else 8.dp),
+                .padding(horizontal = if (isExpanded) 20.dp else 16.dp, vertical = if (isExpanded) 18.dp else 9.dp),
             contentAlignment = Alignment.Center,
         ) {
             if (!isExpanded) {
@@ -257,7 +259,7 @@ fun DynamicIsland(
                                 )
                             } else {
                                 Text(
-                                    text = selectedProxy?.countryCode ?: "VPN",
+                                    text = selectedProxy?.countryCode ?: s.appName,
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                     color = contentColor,
                                 )
@@ -281,31 +283,31 @@ fun DynamicIsland(
                         }
                         ConnectionState.CONNECTING -> {
                             Text(
-                                text = "Connecting\u2026",
+                                text = s.islandConnecting,
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                                 color = statusColors.connecting,
                             )
                         }
                         ConnectionState.DISCONNECTED -> {
                             Text(
-                                text = "FoxyVPN",
+                                text = s.appName,
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
                                 color = contentColor.copy(alpha = 0.85f),
                             )
-                            Spacer(Modifier.width(6.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text(
-                                text = "Ready",
+                                text = s.islandReady,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = contentColor.copy(alpha = 0.6f),
+                                color = contentColor.copy(alpha = 0.65f),
                             )
                         }
                     }
 
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(8.dp))
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "Expand Dynamic Island",
-                        tint = contentColor.copy(alpha = 0.5f),
+                        contentDescription = null,
+                        tint = contentColor.copy(alpha = 0.55f),
                         modifier = Modifier.size(14.dp),
                     )
                 }
@@ -324,7 +326,7 @@ fun DynamicIsland(
                             val flag = selectedProxy?.emojiFlag
                             if (!flag.isNullOrBlank()) {
                                 Text(flag, fontSize = 18.sp)
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(10.dp))
                             } else {
                                 Icon(
                                     imageVector = Icons.Filled.Public,
@@ -332,21 +334,22 @@ fun DynamicIsland(
                                     tint = contentColor,
                                     modifier = Modifier.size(18.dp),
                                 )
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(10.dp))
                             }
                             Column {
                                 Text(
-                                    text = selectedProxy?.let { it.countryName.ifBlank { it.countryCode } } ?: "FoxyVPN Server",
+                                    text = selectedProxy?.let { it.countryName.ifBlank { it.countryCode } } ?: s.islandServerDefault,
                                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                     color = contentColor,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                 )
+                                Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = when (state) {
-                                        ConnectionState.CONNECTED -> "Active & Encrypted"
-                                        ConnectionState.CONNECTING -> "Securing Connection..."
-                                        ConnectionState.DISCONNECTED -> "Protected Mode Ready"
+                                        ConnectionState.CONNECTED -> s.islandActiveEncrypted
+                                        ConnectionState.CONNECTING -> s.islandSecuringConnection
+                                        ConnectionState.DISCONNECTED -> s.islandProtectedReady
                                     },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = when (state) {
@@ -360,15 +363,15 @@ fun DynamicIsland(
 
                         Icon(
                             imageVector = Icons.Filled.KeyboardArrowUp,
-                            contentDescription = "Collapse",
-                            tint = contentColor.copy(alpha = 0.6f),
+                            contentDescription = null,
+                            tint = contentColor.copy(alpha = 0.65f),
                             modifier = Modifier
-                                .size(22.dp)
+                                .size(24.dp)
                                 .clickable { isExpanded = false },
                         )
                     }
 
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(16.dp))
 
                     // Stats Grid
                     Row(
@@ -378,11 +381,11 @@ fun DynamicIsland(
                         // Latency / Ping
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Latency",
+                                text = s.islandLatency,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = contentColor.copy(alpha = 0.65f),
                             )
-                            Spacer(Modifier.height(2.dp))
+                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = pingLatency?.let { "$it ms" } ?: "\u2014",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
@@ -393,11 +396,11 @@ fun DynamicIsland(
                         // Duration
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Duration",
+                                text = s.islandDuration,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = contentColor.copy(alpha = 0.65f),
                             )
-                            Spacer(Modifier.height(2.dp))
+                            Spacer(Modifier.height(4.dp))
                             Text(
                                 text = if (state == ConnectionState.CONNECTED) formatIslandDuration(elapsedSeconds) else "00:00:00",
                                 style = MaterialTheme.typography.bodyMedium.copy(
@@ -412,11 +415,11 @@ fun DynamicIsland(
                         if (settingsStore.dynamicIslandShowSpeed) {
                             Column(modifier = Modifier.weight(1.2f)) {
                                 Text(
-                                    text = "Live Speed",
+                                    text = s.islandLiveSpeed,
                                     style = MaterialTheme.typography.labelSmall,
                                     color = contentColor.copy(alpha = 0.65f),
                                 )
-                                Spacer(Modifier.height(2.dp))
+                                Spacer(Modifier.height(4.dp))
                                 val tx = formatBytesPerSecond(liveStats.txRateBytesPerSec)
                                 val rx = formatBytesPerSecond(liveStats.rxRateBytesPerSec)
                                 Text(
@@ -430,27 +433,27 @@ fun DynamicIsland(
                         }
                     }
 
-                    Spacer(Modifier.height(14.dp))
+                    Spacer(Modifier.height(16.dp))
 
                     // Action buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(contentColor.copy(alpha = 0.12f))
                                 .clickable {
                                     isExpanded = false
                                     onOpenServers()
                                 }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
-                                text = "Change Server",
+                                text = s.islandChangeServer,
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                                 color = contentColor,
                             )
@@ -459,7 +462,7 @@ fun DynamicIsland(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(14.dp))
                                 .background(
                                     if (state == ConnectionState.CONNECTED) statusColors.connected.copy(alpha = 0.2f)
                                     else neu.accent.copy(alpha = 0.2f)
@@ -468,14 +471,14 @@ fun DynamicIsland(
                                     isExpanded = false
                                     if (state == ConnectionState.DISCONNECTED) onRequestConnect() else onDisconnect()
                                 }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 11.dp),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = when (state) {
-                                    ConnectionState.CONNECTED -> "Disconnect"
-                                    ConnectionState.CONNECTING -> "Cancel"
-                                    ConnectionState.DISCONNECTED -> "Connect"
+                                    ConnectionState.CONNECTED -> s.islandDisconnect
+                                    ConnectionState.CONNECTING -> s.islandCancel
+                                    ConnectionState.DISCONNECTED -> s.islandConnect
                                 },
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                                 color = if (state == ConnectionState.CONNECTED) statusColors.connected else neu.accent,
